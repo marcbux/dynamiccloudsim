@@ -85,6 +85,7 @@ public class LATEScheduler extends GreedyQueueScheduler {
 			vmIdToSumOfProgressScores.put(vm.getId(), (double)nSucceededTasksPerVm.get(vm.getId()));
 		}
 		for (Task t : tasks.values()) {
+			t.computeEstimatedTimeToCompletion();
 			vmIdToSumOfProgressScores.put(t.getVmId(), vmIdToSumOfProgressScores.get(t.getVmId()) + t.getProgressScore());
 		}
 		

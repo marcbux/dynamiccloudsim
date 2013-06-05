@@ -3,6 +3,7 @@ package org.dcs.workflow;
 import org.cloudbus.cloudsim.UtilizationModel;
 import org.cloudbus.cloudsim.core.CloudSim;
 import org.dcs.HeterogeneousCloudlet;
+import org.dcs.examples.Parameters;
 
 public class Task extends HeterogeneousCloudlet implements Comparable<Task> {
 	
@@ -166,19 +167,35 @@ public class Task extends HeterogeneousCloudlet implements Comparable<Task> {
 		return upwardRank;
 	}
 	
+	private void computeProgressScore() {
+		double actualProgressScore = (double)(getCloudletFinishedSoFar()) / (double)(getCloudletLength());
+		// the distortion is higher if task is really close to finish or just started recently
+		double distortionIntensity = 1d - Math.abs(1d - actualProgressScore * 2d);
+		double distortion = Parameters.numGen.nextGaussian() * Parameters.distortionCV * distortionIntensity;
+		double perceivedProgressScore = actualProgressScore + distortion;
+		progressScore = (perceivedProgressScore > 1) ? 0.99 : ((perceivedProgressScore < 0) ? 0.01 : perceivedProgressScore);
+	}
+	
+	private void computeProgressRate() {
+		computeProgressScore();
+		timeTaskHasBeenRunning = CloudSim.clock() - getExecStartTime();
+		progressRate = (timeTaskHasBeenRunning == 0) ? Double.MAX_VALUE : getProgressScore() / timeTaskHasBeenRunning;
+	}
+	
+	public void computeEstimatedTimeToCompletion() {
+		computeProgressRate();
+		estimatedTimeToCompletion = (getProgressRate() == 0) ? Double.MAX_VALUE : (1d - getProgressScore()) / getProgressRate();
+	}
+	
 	public double getProgressScore() {
-		progressScore = (double)(getCloudletFinishedSoFar()) / (double)(getCloudletLength());
 		return progressScore;
 	}
 	
 	public double getProgressRate() {
-		timeTaskHasBeenRunning = CloudSim.clock() - getExecStartTime();
-		progressRate = (timeTaskHasBeenRunning == 0) ? Double.MAX_VALUE : getProgressScore() / timeTaskHasBeenRunning;
 		return progressRate;
 	}
 	
 	public double getEstimatedTimeToCompletion() {
-		estimatedTimeToCompletion = (getProgressRate() == 0) ? Double.MAX_VALUE : (1d - getProgressScore()) / getProgressRate();
 		return estimatedTimeToCompletion;
 	}
 

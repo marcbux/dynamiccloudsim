@@ -12,6 +12,7 @@ import org.cloudbus.cloudsim.Log;
 import org.cloudbus.cloudsim.Vm;
 import org.cloudbus.cloudsim.core.CloudSim;
 import org.dcs.DynamicVm;
+import org.dcs.examples.Parameters;
 import org.dcs.workflow.DataDependency;
 import org.dcs.workflow.Task;
 import org.dcs.workflow.TaskUpwardRankComparator;
@@ -25,11 +26,18 @@ public class HEFTScheduler extends StaticRoundRobinScheduler {
 	Map<Integer, TreeSet<Double>> freeTimeSlotStartsPerVm;
 	Map<Integer, HashMap<Double, Double>> freeTimeSlotLengthsPerVm;
 	
+	Map<Integer, Double> distortedMiPerTask;
+	Map<Integer, Double> distortedIoPerTask;
+	Map<Integer, Double> distortedBwPerTask;
+	
 	public HEFTScheduler(String name, int taskSlotsPerVm) throws Exception {
 		super(name, taskSlotsPerVm);
 		readyTimePerTask = new HashMap<Integer, Double>();
 		freeTimeSlotStartsPerVm = new HashMap<Integer, TreeSet<Double>>();
 		freeTimeSlotLengthsPerVm = new HashMap<Integer, HashMap<Double, Double>>();
+		distortedMiPerTask = new HashMap<Integer, Double>();
+		distortedIoPerTask = new HashMap<Integer, Double>();
+		distortedBwPerTask = new HashMap<Integer, Double>();
 	}
 
 	@Override
@@ -44,8 +52,16 @@ public class HEFTScheduler extends StaticRoundRobinScheduler {
 			freeTimeSlotLengths.put(0d, Double.MAX_VALUE);
 			freeTimeSlotLengthsPerVm.put(vmId, freeTimeSlotLengths);
 		}
+		
 		for (Workflow workflow : workflows) {
 			List<Task> tasks = workflow.getSortedTasks();
+			
+			// distort runtime estimates
+			for (Task task : tasks) {
+				distortedMiPerTask.put(task.getCloudletId(), Math.max(0d, task.getMi() + task.getMi() * Parameters.numGen.nextGaussian() * Parameters.distortionCV));
+				distortedIoPerTask.put(task.getCloudletId(), Math.max(0d, task.getIo() + task.getIo() * Parameters.numGen.nextGaussian() * Parameters.distortionCV));
+				distortedBwPerTask.put(task.getCloudletId(), Math.max(0d, task.getBw() + task.getBw() * Parameters.numGen.nextGaussian() * Parameters.distortionCV));
+			}
 			
 			// compute upward ranks of all tasks
 			for (int i = tasks.size() - 1; i >= 0; i--) {
@@ -61,13 +77,13 @@ public class HEFTScheduler extends StaticRoundRobinScheduler {
 				
 				double averageComputationCost = 0;
 				for (Vm vm : vms.values()) {
-					double miSeconds = task.getMi() / (vm.getNumberOfPes() * vm.getMips());
+					double miSeconds = distortedMiPerTask.get(task.getCloudletId()) / (vm.getNumberOfPes() * vm.getMips());
 					double ioSeconds = 0;
 					if (vm instanceof DynamicVm) {
 						DynamicVm dVm = (DynamicVm) vm;
-						ioSeconds = task.getIo() / dVm.getIo();
+						ioSeconds = distortedIoPerTask.get(task.getCloudletId()) / dVm.getIo();
 					}
-					double bwSeconds = task.getBw() / vm.getBw();
+					double bwSeconds = distortedBwPerTask.get(task.getCloudletId()) / vm.getBw();
 					averageComputationCost += Math.max(Math.max(miSeconds, ioSeconds), bwSeconds);
 				}
 				averageComputationCost /= vms.size();
@@ -88,13 +104,13 @@ public class HEFTScheduler extends StaticRoundRobinScheduler {
 				double bestFinish = Double.MAX_VALUE;
 				
 				for (Vm vm : vms.values()) {
-					double miSeconds = task.getMi() / (vm.getNumberOfPes() * vm.getMips());
+					double miSeconds = distortedMiPerTask.get(task.getCloudletId()) / (vm.getNumberOfPes() * vm.getMips());
 					double ioSeconds = 0;
 					if (vm instanceof DynamicVm) {
 						DynamicVm dVm = (DynamicVm) vm;
-						ioSeconds = task.getIo() / (double)dVm.getIo();
+						ioSeconds = distortedIoPerTask.get(task.getCloudletId()) / (double)dVm.getIo();
 					}
-					double bwSeconds = task.getBw() / (double)vm.getBw();
+					double bwSeconds = distortedBwPerTask.get(task.getCloudletId()) / (double)vm.getBw();
 					double computationCost = Math.max(Math.max(miSeconds, ioSeconds), bwSeconds);
 					
 					// the readytime of this task will have been set by now, as all predecessor tasks have a higher upward rank and thus have been assigned to a vm already

@@ -4,45 +4,69 @@ import java.util.Random;
 
 public class Parameters {
 	
+	public static boolean outputDatacenterEvents = false;
+	public static boolean outputWorkflowGraph = false;
 	public static boolean outputVmPerformanceLogs = false;
 	
 	// experiment parameters
 	public enum Scheduler {
 		STATIC_ROUND_ROBIN,
+		HEFT,
 		JOB_QUEUE,
-		LATE,
-		HEFT
+		LATE
 	}
 	public static Scheduler scheduler = Scheduler.JOB_QUEUE;
-	public static int numberOfRuns = 10;
+	public static int numberOfRuns = 1;
 
 	// Heterogeneity parameters
-	public static double cpuHeterogeneityCV = 0.4;
-	public static double ioHeterogeneityCV = 0.15;
-	public static double bwHeterogeneityCV = 0.2;
-	
+	public static double cpuHeterogeneityCV = 0;
+	public static double ioHeterogeneityCV = 0;
+	public static double bwHeterogeneityCV = 0;
+		
 	// Dynamicity Parameters
 	public static double baselineChangesPerHour = 0.5;
-	public static double cpuDynamicsCV = 0.054;
-	public static double ioDynamicsCV = 0.033;
-	public static double bwDynamicsCV = 0.04;
-	public static double cpuNoiseCV = 0.028;
-	public static double ioNoiseCV = 0.007;
-	public static double bwNoiseCV = 0.01;
-	
+	public static double cpuDynamicsCV = 0;
+	public static double ioDynamicsCV = 0;
+	public static double bwDynamicsCV = 0;
+	public static double cpuNoiseCV = 0;
+	public static double ioNoiseCV = 0;
+	public static double bwNoiseCV = 0;
+		
 	// straggler parameters
-	public static double likelihoodOfStraggler = 0.015;
-	public static double stragglerPerformanceCoefficient = 0.5;
-	
+	public static double likelihoodOfStraggler = 0.025;
+	public static double stragglerPerformanceCoefficient = 0.1;
+		
 	// the probability for a task to end in failure instead of success once it's execution time has passed
-	public static double likelihoodOfFailure = 0.002;
+	public static double likelihoodOfFailure = 0.025;
 	public static double runtimeFactorInCaseOfFailure = 20d;
+	
+//	// Heterogeneity parameters
+//	public static double cpuHeterogeneityCV = 0.4;
+//	public static double ioHeterogeneityCV = 0.15;
+//	public static double bwHeterogeneityCV = 0.2;
+//	
+//	// Dynamicity Parameters
+//	public static double baselineChangesPerHour = 0.5;
+//	public static double cpuDynamicsCV = 0.054;
+//	public static double ioDynamicsCV = 0.033;
+//	public static double bwDynamicsCV = 0.04;
+//	public static double cpuNoiseCV = 0.028;
+//	public static double ioNoiseCV = 0.007;
+//	public static double bwNoiseCV = 0.01;
+//	
+//	// straggler parameters
+//	public static double likelihoodOfStraggler = 0.015;
+//	public static double stragglerPerformanceCoefficient = 0.5;
+//	
+//	// the probability for a task to end in failure instead of success once it's execution time has passed
+//	public static double likelihoodOfFailure = 0.002;
+//	public static double runtimeFactorInCaseOfFailure = 20d;
 	
 	// the coefficient of variation for information that is typically not available in real-world scenarios
 	// e.g., Task progress scores, HEFT runtime estimates
 	public static double distortionCV = 0d;
 	
-	public static long seed = 13;
+	public static long seed = 130;
 	public static Random numGen = new Random(seed);
 	
 	public static void parseParameters(String[] args) {

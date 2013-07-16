@@ -19,12 +19,12 @@ import org.dcs.DynamicVm;
 import org.dcs.VmAllocationPolicyRandom;
 import org.dcs.workflow.Task;
 import org.dcs.workflow.Workflow;
-import org.dcs.workflow.io.MontageTraceFileReader;
+import org.dcs.workflow.io.AlignmentTraceFileReader;
 import org.dcs.workflow.scheduler.*;
 
-public class MontageWorkflowExample {
+public class AlignmentWorkflowExample {
 	
-	private static String traceFile = "examples/montage.m17.12.trace";
+	private static String traceFile = "examples/alignment.caco.geo.chr22.trace2";
 	
 	// datacenter params
 	private static long bwpsPerPe = 256;
@@ -55,6 +55,10 @@ public class MontageWorkflowExample {
 		
 		try {
 			for (int i = 0; i < Parameters.numberOfRuns; i++) {
+				System.out.println("Iteration " + i);
+				if (!Parameters.outputDatacenterEvents) {
+					Log.disable();
+				}
 				// First step: Initialize the CloudSim package
 				int num_user = 1;   // number of grid users
 				Calendar calendar = Calendar.getInstance();
@@ -82,9 +86,11 @@ public class MontageWorkflowExample {
 				scheduler.submitVmList(vmlist);
 				
 				// Fifth step: Create Cloudlets and send them to Scheduler
-				MontageTraceFileReader logFileReader = new MontageTraceFileReader(new File(traceFile), true, true, ".*jpg");
+				AlignmentTraceFileReader logFileReader = new AlignmentTraceFileReader(new File(traceFile), true, true, null);
 				Workflow alignmentWorkflow = logFileReader.parseLogFile(scheduler.getId());
-//				alignmentWorkflow.visualize(1024,768);
+				if (Parameters.outputWorkflowGraph) {
+					alignmentWorkflow.visualize(1920,1200);
+				}
 				scheduler.submitWorkflow(alignmentWorkflow);
 				
 				// Sixth step: Starts the simulation
@@ -94,13 +100,13 @@ public class MontageWorkflowExample {
 				totalRuntime += scheduler.getRuntime();
 			}
 			
-			Log.printLine("Average runtime in minutes: " + totalRuntime / Parameters.numberOfRuns / 60);
-			Log.printLine("Total Workload: " + Task.getTotalMi() + "mi " + Task.getTotalIo() + "io " + Task.getTotalBw() + "bw");
-			Log.printLine("Total VM Performance: " + DynamicHost.getTotalMi() + "mips " + DynamicHost.getTotalIo() + "iops " + DynamicHost.getTotalBw() + "bwps");
-			Log.printLine("minimum minutes (quotient): " + Task.getTotalMi() / DynamicHost.getTotalMi() / 60 + " " + Task.getTotalIo() / DynamicHost.getTotalIo() / 60 + " " + Task.getTotalBw() / DynamicHost.getTotalBw() / 60);		
+			System.out.println("Average runtime in minutes: " + totalRuntime / Parameters.numberOfRuns / 60);
+			System.out.println("Total Workload: " + Task.getTotalMi() + "mi " + Task.getTotalIo() + "io " + Task.getTotalBw() + "bw");
+			System.out.println("Total VM Performance: " + DynamicHost.getTotalMi() + "mips " + DynamicHost.getTotalIo() + "iops " + DynamicHost.getTotalBw() + "bwps");
+			System.out.println("minimum minutes (quotient): " + Task.getTotalMi() / DynamicHost.getTotalMi() / 60 + " " + Task.getTotalIo() / DynamicHost.getTotalIo() / 60 + " " + Task.getTotalBw() / DynamicHost.getTotalBw() / 60);		
 		} catch (Exception e) {
 			e.printStackTrace();
-			Log.printLine("The simulation has been terminated due to an unexpected error");
+			System.out.println("The simulation has been terminated due to an unexpected error");
 		}
 		
 	}

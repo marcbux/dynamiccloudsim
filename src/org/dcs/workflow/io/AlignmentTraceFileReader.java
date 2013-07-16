@@ -16,7 +16,7 @@ import org.cloudbus.cloudsim.UtilizationModelFull;
 import org.dcs.workflow.Task;
 import org.dcs.workflow.Workflow;
 
-public class TraceFileReader {
+public class AlignmentTraceFileReader {
 	
 	public static int cloudletId = 1;
 	
@@ -37,7 +37,7 @@ public class TraceFileReader {
 	// omit upload of intermediate files by specifiyng how output data has to look like
 	String outputFileRegex;
 	
-	public TraceFileReader(File log, boolean fileNames, boolean kernelTime, String outputFileRegex) {
+	public AlignmentTraceFileReader(File log, boolean fileNames, boolean kernelTime, String outputFileRegex) {
 		this.log = log;
 		fileNameToFile = new HashMap<String, org.cloudbus.cloudsim.File>();
 		fileNameToProducingTaskId = new HashMap<String, Integer>();
@@ -62,27 +62,20 @@ public class TraceFileReader {
 			String[] splitLine;
 			UtilizationModel utilizationModel = new UtilizationModelFull();
 			while (line != null) {
-				splitLine = line.split(" : ");
-				String name = splitLine[1];
+				splitLine = line.split("\t");
+				String name = splitLine[2];
 				String params = "";
-				if (splitLine.length > 3) {
-					params = splitLine[3];
-				}
-				
 				int timeInMs = 0;
 				int inputSize = 0;
 				int outputSize = 0;
 				
-				while ((line = logfile.readLine()).contains("input")) {
-					splitLine = line.split(" : ");
-					String fileName = splitLine[3];
+				do {
+					splitLine = line.split("\t");
+					String fileName = splitLine[5];
 					if (fileNames) {
 						fileName = fileName.substring(Math.max(0, fileName.lastIndexOf('/') + 1));
 					}
-					int fileSize = 1;
-					if (splitLine.length > 4) {
-						fileSize = Integer.parseInt(splitLine[4]) / 1000;
-					}
+					int fileSize = Integer.parseInt(splitLine[4]) / 1000;
 					fileSize = (fileSize > 0) ? fileSize : 1;
 					
 					if (!fileNameToFile.containsKey(fileName)) {
@@ -91,27 +84,22 @@ public class TraceFileReader {
 					}
 					fileNameToConsumingTaskIds.get(fileName).add(cloudletId);
 					inputSize += fileSize;
-				}
+				} while ((line = logfile.readLine()).contains("input-file"));
 				
 				for (int i = 0; i < 2; i++) {
-					String[] userTime = logfile.readLine().split("\t")[1].split("m|\\.|s");
-					timeInMs += Integer.parseInt(userTime[0]) * 60 * 1000 + Integer.parseInt(userTime[1]) * 1000 + Integer.parseInt(userTime[2]);
-					if (kernelTime) {
-						logfile.readLine();
-						break;
+					splitLine = logfile.readLine().split("\t");
+					if (kernelTime || i < 1) {
+						timeInMs += (int) (Float.parseFloat(splitLine[4]) * 1000);
 					}
 				}
 				
-				while ((line = logfile.readLine()) != null && line.contains("output")) {
-					splitLine = line.split(" : ");
-					String fileName = splitLine[3];
+				while ((line = logfile.readLine()) != null && line.contains("output-file")) {
+					splitLine = line.split("\t");
+					String fileName = splitLine[5];
 					if (fileNames) {
 						fileName = fileName.substring(Math.max(0, fileName.lastIndexOf('/') + 1));
 					}
-					int fileSize = 1;
-					if (splitLine.length > 4) {
-						fileSize = Integer.parseInt(splitLine[4]) / 1000;
-					}
+					int fileSize = Integer.parseInt(splitLine[4]) / 1000;
 					fileSize = (fileSize > 0) ? fileSize : 1;
 					
 					if (!fileNameToFile.containsKey(fileName)) {

@@ -84,7 +84,9 @@ public class MontageWorkflowExample {
 				// Fifth step: Create Cloudlets and send them to Scheduler
 				MontageTraceFileReader logFileReader = new MontageTraceFileReader(new File(traceFile), true, true, ".*jpg");
 				Workflow alignmentWorkflow = logFileReader.parseLogFile(scheduler.getId());
-//				alignmentWorkflow.visualize(1024,768);
+				if (Parameters.outputWorkflowGraph) {
+					alignmentWorkflow.visualize(1920,1200);
+				}
 				scheduler.submitWorkflow(alignmentWorkflow);
 				
 				// Sixth step: Starts the simulation

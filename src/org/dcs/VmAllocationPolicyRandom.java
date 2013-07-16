@@ -67,14 +67,18 @@ public class VmAllocationPolicyRandom extends VmAllocationPolicy {
 		}
 
 		if (!getVmTable().containsKey(vm.getUid())) { // if this vm was not created
-			do {// we still trying until we find a host or until we try all of them
+			do {
 				List<Integer> indexes = new ArrayList<Integer>();
 
-				// we want the host with least vms allocated
 				for (int i = 0; i < freePesTmp.size(); i++) {
 					for (int j = 0; j < freePesTmp.get(i); j++) {
 						indexes.add(i);
 					}
+				}
+				
+				// there are no more resources available for allocation
+				if (indexes.isEmpty()) {
+					break;
 				}
 				
 				int randomHostIndex = indexes.get((int)(numGen.nextDouble() * indexes.size()));

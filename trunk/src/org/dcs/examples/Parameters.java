@@ -13,10 +13,11 @@ public class Parameters {
 		STATIC_ROUND_ROBIN,
 		HEFT,
 		JOB_QUEUE,
-		LATE
+		LATE,
+		C3
 	}
 	public static Scheduler scheduler = Scheduler.JOB_QUEUE;
-	public static int numberOfRuns = 1;
+	public static int numberOfRuns = 1000;
 
 	// Heterogeneity parameters
 	public static double cpuHeterogeneityCV = 0.4;

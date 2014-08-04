@@ -2,79 +2,69 @@ package de.huberlin.wbi.dcs;
 
 import java.util.Random;
 
+import org.cloudbus.cloudsim.distributions.ContinuousDistribution;
+
 import de.huberlin.wbi.dcs.examples.Parameters;
 
 public class DynamicModel {
-	
+
 	private double previousTime;
 	private final Random numGen;
-	
-	private double miBaselineChangesPerHour;
-	private double ioBaselineChangesPerHour;
-	private double bwBaselineChangesPerHour;
-	
-	private double miBaselineCV;
-	private double ioBaselineCV;
-	private double bwBaselineCV;
-	
-	private double miNoiseCV;
-	private double ioNoiseCV;
-	private double bwNoiseCV;
-	
+
 	private double miCurrentBaseline;
 	private double ioCurrentBaseline;
 	private double bwCurrentBaseline;
-	
-	public DynamicModel(double baselineChangesPerHour, double cpuDynamicsCV, double ioDynamicsCV, double bwDynamicsCV, double cpuNoiseCV, double ioNoiseCV, double bwNoiseCV) {
+
+	public DynamicModel() {
 		this.previousTime = 0;
 		this.numGen = Parameters.numGen;
-		
-		this.miBaselineChangesPerHour = this.ioBaselineChangesPerHour = this.bwBaselineChangesPerHour = baselineChangesPerHour;
-		this.miBaselineCV = cpuDynamicsCV;
-		this.ioBaselineCV = ioDynamicsCV;
-		this.bwBaselineCV = bwDynamicsCV;
-		this.miNoiseCV = cpuNoiseCV;
-		this.ioNoiseCV = ioNoiseCV;
-		this.bwNoiseCV = bwNoiseCV;
-		
+
 		changeMiBaseline();
 		changeIoBaseline();
 		changeBwBaseline();
 	}
-	
-	public DynamicModel(double baselineChangesPerHour, double baselineCV, double noiseCV) {
-		this(baselineChangesPerHour, baselineCV, baselineCV, baselineCV, noiseCV, noiseCV, noiseCV);
-	}
-	
+
 	private void changeMiBaseline() {
+		double mean = 1d;
+		double dev = Parameters.cpuDynamicsCV;
+		ContinuousDistribution dist = Parameters.getDistribution(Parameters.cpuDynamicsDistribution, mean, Parameters.cpuDynamicsAlpha, Parameters.cpuDynamicsBeta, dev, Parameters.cpuDynamicsShape, Parameters.cpuDynamicsLocation, Parameters.cpuDynamicsShift, Parameters.cpuDynamicsMin, Parameters.cpuDynamicsMax, Parameters.cpuDynamicsPopulation);
 		miCurrentBaseline = 0;
 		while (miCurrentBaseline <= 0) {
-			miCurrentBaseline = 1 + numGen.nextGaussian() * miBaselineCV;
+			miCurrentBaseline = dist.sample();
 		}
 	}
-	
+
 	private void changeIoBaseline() {
+		double mean = 1d;
+		double dev = Parameters.ioDynamicsCV;
+		ContinuousDistribution dist = Parameters.getDistribution(Parameters.ioDynamicsDistribution, mean, Parameters.ioDynamicsAlpha, Parameters.ioDynamicsBeta, dev, Parameters.ioDynamicsShape, Parameters.ioDynamicsLocation, Parameters.ioDynamicsShift, Parameters.ioDynamicsMin, Parameters.ioDynamicsMax, Parameters.ioDynamicsPopulation);
 		ioCurrentBaseline = 0;
 		while (ioCurrentBaseline <= 0) {
-			ioCurrentBaseline = 1 + numGen.nextGaussian() * ioBaselineCV;
+			ioCurrentBaseline = dist.sample();
 		}
 	}
-	
+
 	private void changeBwBaseline() {
+		double mean = 1d;
+		double dev = Parameters.bwDynamicsCV;
+		ContinuousDistribution dist = Parameters.getDistribution(Parameters.bwDynamicsDistribution, mean, Parameters.bwDynamicsAlpha, Parameters.bwDynamicsBeta, dev, Parameters.bwDynamicsShape, Parameters.bwDynamicsLocation, Parameters.bwDynamicsShift, Parameters.bwDynamicsMin, Parameters.bwDynamicsMax, Parameters.bwDynamicsPopulation);
 		bwCurrentBaseline = 0;
 		while (bwCurrentBaseline <= 0) {
-			bwCurrentBaseline = 1 + numGen.nextGaussian() * bwBaselineCV;
+			bwCurrentBaseline = dist.sample();
 		}
 	}
-	
-	public void updateBaselines (double timespan) {
+
+	public void updateBaselines(double timespan) {
 		double timespanInHours = timespan / (60 * 60);
 
 		// Assuming exponential distribution
-		double chanceOfMiChange = 1 - Math.pow(Math.E, - (timespanInHours * miBaselineChangesPerHour));
-		double chanceOfIoChange = 1 - Math.pow(Math.E, - (timespanInHours * ioBaselineChangesPerHour));
-		double chanceOfBwChange = 1 - Math.pow(Math.E, - (timespanInHours * bwBaselineChangesPerHour));
-		
+		double chanceOfMiChange = 1 - Math.pow(Math.E,
+				-(timespanInHours * Parameters.cpuBaselineChangesPerHour));
+		double chanceOfIoChange = 1 - Math.pow(Math.E,
+				-(timespanInHours * Parameters.ioBaselineChangesPerHour));
+		double chanceOfBwChange = 1 - Math.pow(Math.E,
+				-(timespanInHours * Parameters.bwBaselineChangesPerHour));
+
 		if (numGen.nextDouble() <= chanceOfMiChange) {
 			changeMiBaseline();
 		}
@@ -85,35 +75,47 @@ public class DynamicModel {
 			changeBwBaseline();
 		}
 	}
-	
+
 	public double nextMiCoefficient() {
+		double mean = miCurrentBaseline;
+		double dev = Parameters.cpuNoiseCV
+				* miCurrentBaseline;
+		ContinuousDistribution dist = Parameters.getDistribution(Parameters.cpuNoiseDistribution, mean, Parameters.cpuNoiseAlpha, Parameters.cpuNoiseBeta, dev, Parameters.cpuNoiseShape, Parameters.cpuNoiseLocation, Parameters.cpuNoiseShift, Parameters.cpuNoiseMin, Parameters.cpuNoiseMax, Parameters.cpuNoisePopulation);
 		double nextMiCoefficient = 0;
 		while (nextMiCoefficient <= 0) {
-			nextMiCoefficient = miCurrentBaseline + numGen.nextGaussian() * miNoiseCV * miCurrentBaseline;
+			nextMiCoefficient = dist.sample();
 		}
 		return nextMiCoefficient;
 	}
-	
+
 	public double nextIoCoefficient() {
+		double mean = ioCurrentBaseline;
+		double dev = Parameters.ioNoiseCV
+				* ioCurrentBaseline;
+		ContinuousDistribution dist = Parameters.getDistribution(Parameters.ioNoiseDistribution, mean, Parameters.ioNoiseAlpha, Parameters.ioNoiseBeta, dev, Parameters.ioNoiseShape, Parameters.ioNoiseLocation, Parameters.ioNoiseShift, Parameters.ioNoiseMin, Parameters.ioNoiseMax, Parameters.ioNoisePopulation);
 		double nextIoCoefficient = 0;
 		while (nextIoCoefficient <= 0) {
-			nextIoCoefficient = ioCurrentBaseline + numGen.nextGaussian() * ioNoiseCV * ioCurrentBaseline;
+			nextIoCoefficient = dist.sample();
 		}
 		return nextIoCoefficient;
 	}
 
 	public double nextBwCoefficient() {
+		double mean = bwCurrentBaseline;
+		double dev = Parameters.bwNoiseCV
+				* bwCurrentBaseline;
+		ContinuousDistribution dist = Parameters.getDistribution(Parameters.bwNoiseDistribution, mean, Parameters.bwNoiseAlpha, Parameters.bwNoiseBeta, dev, Parameters.bwNoiseShape, Parameters.bwNoiseLocation, Parameters.bwNoiseShift, Parameters.bwNoiseMin, Parameters.bwNoiseMax, Parameters.bwNoisePopulation);
 		double nextBwCoefficient = 0;
 		while (nextBwCoefficient <= 0) {
-			nextBwCoefficient = bwCurrentBaseline + numGen.nextGaussian() * bwNoiseCV * bwCurrentBaseline;
+			nextBwCoefficient = dist.sample();
 		}
 		return nextBwCoefficient;
 	}
-	
+
 	public double getPreviousTime() {
 		return previousTime;
 	}
-	
+
 	public void setPreviousTime(double previousTime) {
 		this.previousTime = previousTime;
 	}

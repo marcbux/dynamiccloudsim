@@ -2,11 +2,37 @@ package de.huberlin.wbi.dcs.examples;
 
 import java.util.Random;
 
+import org.cloudbus.cloudsim.distributions.ContinuousDistribution;
+import org.cloudbus.cloudsim.distributions.ExponentialDistr;
+import org.cloudbus.cloudsim.distributions.GammaDistr;
+import org.cloudbus.cloudsim.distributions.LognormalDistr;
+import org.cloudbus.cloudsim.distributions.LomaxDistribution;
+import org.cloudbus.cloudsim.distributions.ParetoDistr;
+import org.cloudbus.cloudsim.distributions.UniformDistr;
+import org.cloudbus.cloudsim.distributions.WeibullDistr;
+import org.cloudbus.cloudsim.distributions.ZipfDistr;
+
+import de.huberlin.wbi.dcs.distributions.NormalDistribution;
+
 public class Parameters {
+	
+	public enum Experiment {
+		MONTAGE_TRACE_1,
+		MONTAGE_TRACE_12,
+		MONTAGE_25,
+		MONTAGE_1000,
+		EPIGENOMICS_997,
+		CYBERSHAKE_1000,
+		ALIGNMENT_TRACE,
+		CUNEIFORM_VARIANT_CALL
+	}
+	public static Experiment experiment = Experiment.EPIGENOMICS_997;
 	
 	public static boolean outputDatacenterEvents = false;
 	public static boolean outputWorkflowGraph = false;
 	public static boolean outputVmPerformanceLogs = false;
+	
+//	public enum LogParser
 	
 	// experiment parameters
 	public enum Scheduler {
@@ -14,24 +40,134 @@ public class Parameters {
 		HEFT,
 		JOB_QUEUE,
 		LATE,
-		C3
+		C3,
+		C2O
 	}
-	public static Scheduler scheduler = Scheduler.JOB_QUEUE;
-	public static int numberOfRuns = 1000;
-
-	// Heterogeneity parameters
-	public static double cpuHeterogeneityCV = 0.4;
-	public static double ioHeterogeneityCV = 0.15;
-	public static double bwHeterogeneityCV = 0.2;
+	public static Scheduler scheduler = Scheduler.C2O;
+	public static int numberOfRuns = 20;
 	
-	// Dynamicity Parameters
-	public static double baselineChangesPerHour = 0.5;
+	public enum Distribution {
+		EXPONENTIAL,
+		GAMMA,
+		LOGNORMAL,
+		LOMAX,
+		NORMAL,
+		PARETO,
+		UNIFORM,
+		WEIBULL,
+		ZIPF
+	}
+	
+	// CPU Heterogeneity
+	public static Distribution cpuHeterogeneityDistribution = Distribution.NORMAL;
+	public static double cpuHeterogeneityCV = 0.4;
+	public static int cpuHeterogeneityAlpha = 0;
+	public static double cpuHeterogeneityBeta = 0d;
+	public static double cpuHeterogeneityShape = 0d;
+	public static double cpuHeterogeneityLocation = 0d;
+	public static double cpuHeterogeneityShift = 0d;
+	public static double cpuHeterogeneityMin = 0d;
+	public static double cpuHeterogeneityMax = 0d;
+	public static int cpuHeterogeneityPopulation = 0;
+
+	// IO Heterogeneity
+	public static Distribution ioHeterogeneityDistribution = Distribution.NORMAL;
+	public static double ioHeterogeneityCV = 0.15;
+	public static int ioHeterogeneityAlpha = 0;
+	public static double ioHeterogeneityBeta = 0d;
+	public static double ioHeterogeneityShape = 0d;
+	public static double ioHeterogeneityLocation = 0d;
+	public static double ioHeterogeneityShift = 0d;
+	public static double ioHeterogeneityMin = 0d;
+	public static double ioHeterogeneityMax = 0d;
+	public static int ioHeterogeneityPopulation = 0;
+	
+	// BW Heterogeneity
+	public static Distribution bwHeterogeneityDistribution = Distribution.NORMAL;
+	public static double bwHeterogeneityCV = 0.2;
+	public static int bwHeterogeneityAlpha = 0;
+	public static double bwHeterogeneityBeta = 0d;
+	public static double bwHeterogeneityShape = 0d;
+	public static double bwHeterogeneityLocation = 0d;
+	public static double bwHeterogeneityShift = 0d;
+	public static double bwHeterogeneityMin = 0d;
+	public static double bwHeterogeneityMax = 0d;
+	public static int bwHeterogeneityPopulation = 0;
+
+	// CPU Dynamics
+	public static double cpuBaselineChangesPerHour = 0.5;
+	public static Distribution cpuDynamicsDistribution = Distribution.NORMAL;
 	public static double cpuDynamicsCV = 0.054;
+	public static int cpuDynamicsAlpha = 0;
+	public static double cpuDynamicsBeta = 0d;
+	public static double cpuDynamicsShape = 0d;
+	public static double cpuDynamicsLocation = 0d;
+	public static double cpuDynamicsShift = 0d;
+	public static double cpuDynamicsMin = 0d;
+	public static double cpuDynamicsMax = 0d;
+	public static int cpuDynamicsPopulation = 0;
+	
+	// IO Dynamics
+	public static double ioBaselineChangesPerHour = 0.5;
+	public static Distribution ioDynamicsDistribution = Distribution.NORMAL;
 	public static double ioDynamicsCV = 0.033;
+	public static int ioDynamicsAlpha = 0;
+	public static double ioDynamicsBeta = 0d;
+	public static double ioDynamicsShape = 0d;
+	public static double ioDynamicsLocation = 0d;
+	public static double ioDynamicsShift = 0d;
+	public static double ioDynamicsMin = 0d;
+	public static double ioDynamicsMax = 0d;
+	public static int ioDynamicsPopulation = 0;
+	
+	// BW Dynamics
+	public static double bwBaselineChangesPerHour = 0.5;
+	public static Distribution bwDynamicsDistribution = Distribution.NORMAL;
 	public static double bwDynamicsCV = 0.04;
+	public static int bwDynamicsAlpha = 0;
+	public static double bwDynamicsBeta = 0d;
+	public static double bwDynamicsShape = 0d;
+	public static double bwDynamicsLocation = 0d;
+	public static double bwDynamicsShift = 0d;
+	public static double bwDynamicsMin = 0d;
+	public static double bwDynamicsMax = 0d;
+	public static int bwDynamicsPopulation = 0;
+	
+	// CPU noise
+	public static Distribution cpuNoiseDistribution = Distribution.NORMAL;
 	public static double cpuNoiseCV = 0.028;
+	public static int cpuNoiseAlpha = 0;
+	public static double cpuNoiseBeta = 0d;
+	public static double cpuNoiseShape = 0d;
+	public static double cpuNoiseLocation = 0d;
+	public static double cpuNoiseShift = 0d;
+	public static double cpuNoiseMin = 0d;
+	public static double cpuNoiseMax = 0d;
+	public static int cpuNoisePopulation = 0;
+	
+	// IO noise
+	public static Distribution ioNoiseDistribution = Distribution.NORMAL;
 	public static double ioNoiseCV = 0.007;
+	public static int ioNoiseAlpha = 0;
+	public static double ioNoiseBeta = 0d;
+	public static double ioNoiseShape = 0d;
+	public static double ioNoiseLocation = 0d;
+	public static double ioNoiseShift = 0d;
+	public static double ioNoiseMin = 0d;
+	public static double ioNoiseMax = 0d;
+	public static int ioNoisePopulation = 0;
+	
+	// BW noise
+	public static Distribution bwNoiseDistribution = Distribution.NORMAL;
 	public static double bwNoiseCV = 0.01;
+	public static int bwNoiseAlpha = 0;
+	public static double bwNoiseBeta = 0d;
+	public static double bwNoiseShape = 0d;
+	public static double bwNoiseLocation = 0d;
+	public static double bwNoiseShift = 0d;
+	public static double bwNoiseMin = 0d;
+	public static double bwNoiseMax = 0d;
+	public static int bwNoisePopulation = 0;
 	
 	// straggler parameters
 	public static double likelihoodOfStraggler = 0.015;
@@ -45,8 +181,42 @@ public class Parameters {
 	// e.g., Task progress scores, HEFT runtime estimates
 	public static double distortionCV = 0d;
 	
-	public static long seed = 130;
+	public static long seed = 134;
 	public static Random numGen = new Random(seed);
+	
+	public static ContinuousDistribution getDistribution(Distribution distribution, double mean, int alpha, double beta, double dev, double shape, double location, double shift, double min, double max, int population) {
+		ContinuousDistribution dist = null;
+		switch (distribution) {
+		case EXPONENTIAL:
+			dist = new ExponentialDistr(mean);
+			break;
+		case GAMMA:
+			dist = new GammaDistr(numGen, alpha, beta);
+			break;
+		case LOGNORMAL:
+			dist = new LognormalDistr(numGen, mean, dev);
+			break;
+		case LOMAX:
+			dist = new LomaxDistribution(numGen, shape, location, shift);
+			break;
+		case NORMAL:
+			dist = new NormalDistribution(numGen, mean, dev);
+			break;
+		case PARETO:
+			dist = new ParetoDistr(numGen, shape, location);
+			break;
+		case UNIFORM:
+			dist = new UniformDistr(min, max);
+			break;
+		case WEIBULL:
+			dist = new WeibullDistr(numGen, alpha, beta);
+			break;
+		case ZIPF:
+			dist = new ZipfDistr(shape, population);
+			break;
+		}
+		return dist;
+	}
 	
 	public static void parseParameters(String[] args) {
 		
@@ -73,7 +243,7 @@ public class Parameters {
 				bwHeterogeneityCV = Double.valueOf(args[++i]);
 			}
 			if (args[i].compareTo("-" + "baselineChangesPerHour") == 0) {
-				baselineChangesPerHour = Double.valueOf(args[++i]);
+				cpuBaselineChangesPerHour = ioBaselineChangesPerHour = bwBaselineChangesPerHour = Double.valueOf(args[++i]);
 			}
 			if (args[i].compareTo("-" + "baselineCV") == 0) {
 				cpuDynamicsCV = ioDynamicsCV = bwDynamicsCV = Double.valueOf(args[++i]);

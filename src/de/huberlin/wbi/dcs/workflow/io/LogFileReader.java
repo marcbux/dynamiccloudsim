@@ -25,9 +25,9 @@ public abstract class LogFileReader {
 
 	public LogFileReader() {
 		fileNameToFile = new HashMap<String, File>();
-		fileNameToProducingTaskId = new HashMap<String, Long>();
-		fileNameToConsumingTaskIds = new HashMap<String, List<Long>>();
-		taskIdToTask = new HashMap<Long, Task>();
+		fileNameToProducingTaskId = new HashMap<>();
+		fileNameToConsumingTaskIds = new HashMap<>();
+		taskIdToTask = new HashMap<>();
 		utilizationModel = new UtilizationModelFull();
 	}
 
@@ -49,6 +49,7 @@ public abstract class LogFileReader {
 	protected void populateNodes(Workflow workflow) {
 		for (Task task : taskIdToTask.values()) {
 			workflow.addTask(task);
+//			System.out.println(task + " (" + task.getMi() + " / " + task.getIo() + " / " + task.getBw() + ")");
 		}
 	}
 
@@ -70,6 +71,7 @@ public abstract class LogFileReader {
 						workflow, userId, cloudletId++, 0, file.getSize(),
 						file.getSize(), 1, 0, file.getSize(), utilizationModel,
 						utilizationModel, utilizationModel);
+				workflow.addTask(taskGeneratingThisFile);
 			}
 			if (tasksRequiringThisFile.size() == 0
 					&& fileName.matches(outputFileRegex)) {
@@ -77,10 +79,12 @@ public abstract class LogFileReader {
 						workflow, userId, cloudletId++, 0, file.getSize(),
 						file.getSize(), 1, file.getSize(), 0, utilizationModel,
 						utilizationModel, utilizationModel);
+				workflow.addTask(taskRequiringThisFile);
 				tasksRequiringThisFile.add(taskRequiringThisFile);
 			}
 			workflow.addFile(file, taskGeneratingThisFile,
 					tasksRequiringThisFile);
+//			System.out.println(file.getName() + ": " + taskGeneratingThisFile + " -> " + tasksRequiringThisFile);
 		}
 
 		

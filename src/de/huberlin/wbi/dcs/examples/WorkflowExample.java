@@ -35,33 +35,6 @@ import de.huberlin.wbi.dcs.workflow.scheduler.WorkflowScheduler;
 
 public class WorkflowExample {
 
-	// datacenter params
-	protected long bwpsPerPe = 256;
-	protected long iopsPerPe = 20 * 1024;
-
-	protected int nOpteron270 = 200;
-	protected int nCusPerCoreOpteron270 = 2;
-	protected int nCoresOpteron270 = 4;
-	protected int mipsPerCoreOpteron270 = 174;
-
-	protected int nOpteron2218 = 200;
-	protected int nCusPerCoreOpteron2218 = 2;
-	protected int nCoresOpteron2218 = 4;
-	protected int mipsPerCoreOpteron2218 = 247;
-
-	protected int nXeonE5430 = 100;
-	protected int nCusPerCoreXeonE5430 = 2;
-	protected int nCoresXeonE5430 = 8;
-	protected int mipsPerCoreXeonE5430 = 355;
-
-	// vm params
-	protected int nVms = 8;
-	protected int taskSlotsPerVm = 1;
-
-	protected double numberOfCusPerPe = 1;
-	protected int numberOfPes = 1;
-	protected int ram = (int) (1.7 * 1024);
-
 	public static void main(String[] args) {
 		double totalRuntime = 0d;
 		Parameters.parseParameters(args);
@@ -79,7 +52,7 @@ public class WorkflowExample {
 				CloudSim.init(num_user, calendar, trace_flag);
 
 				ex.createDatacenter("Datacenter");
-				WorkflowScheduler scheduler = ex.createScheduler();
+				WorkflowScheduler scheduler = ex.createScheduler(i);
 				ex.createVms(i, scheduler);
 				Workflow workflow = buildWorkflow(scheduler);
 				ex.submitWorkflow(workflow, scheduler);
@@ -110,26 +83,26 @@ public class WorkflowExample {
 
 	}
 
-	public WorkflowScheduler createScheduler() {
+	public WorkflowScheduler createScheduler(int i) {
 		try {
 			switch (Parameters.scheduler) {
 			case STATIC_ROUND_ROBIN:
 				return new StaticRoundRobinScheduler(
-						"StaticRoundRobinScheduler", taskSlotsPerVm);
+						"StaticRoundRobinScheduler", Parameters.taskSlotsPerVm);
 			case LATE:
-				return new LATEScheduler("LATEScheduler", taskSlotsPerVm);
+				return new LATEScheduler("LATEScheduler", Parameters.taskSlotsPerVm);
 			case HEFT:
-				return new HEFTScheduler("HEFTScheduler", taskSlotsPerVm);
+				return new HEFTScheduler("HEFTScheduler", Parameters.taskSlotsPerVm);
 			case JOB_QUEUE:
 				return new GreedyQueueScheduler("GreedyQueueScheduler",
-						taskSlotsPerVm);
+						Parameters.taskSlotsPerVm);
 			case C3:
-				return new C3("C3", taskSlotsPerVm);
+				return new C3("C3", Parameters.taskSlotsPerVm);
 			case C2O:
-				return new C2O("C2O", taskSlotsPerVm);
+				return new C2O("C2O", Parameters.taskSlotsPerVm, i);
 			default:
 				return new GreedyQueueScheduler("GreedyQueueScheduler",
-						taskSlotsPerVm);
+						Parameters.taskSlotsPerVm);
 			}
 
 		} catch (Exception e) {
@@ -171,6 +144,9 @@ public class WorkflowExample {
 		case CUNEIFORM_VARIANT_CALL:
 			return new CuneiformLogFileReader().parseLogFile(scheduler.getId(),
 					"examples/i1_s11756_r7_greedyQueue.log", true, true, null);
+		case HETEROGENEOUS_TEST_WORKFLOW:
+			return new CuneiformLogFileReader().parseLogFile(scheduler.getId(),
+					"examples/heterogeneous_test_workflow.log", true, true, null);
 		}
 		return null;
 	}
@@ -191,8 +167,8 @@ public class WorkflowExample {
 		int hostId = 0;
 		long storage = 1024 * 1024;
 
-		int ram = (int) (2 * 1024 * nCusPerCoreOpteron270 * nCoresOpteron270);
-		for (int i = 0; i < nOpteron270; i++) {
+		int ram = (int) (2 * 1024 * Parameters.nCusPerCoreOpteron270 * Parameters.nCoresOpteron270);
+		for (int i = 0; i < Parameters.nOpteron270; i++) {
 			double mean = 1d;
 			double dev = Parameters.bwHeterogeneityCV;
 			ContinuousDistribution dist = Parameters.getDistribution(
@@ -207,7 +183,7 @@ public class WorkflowExample {
 					Parameters.bwHeterogeneityPopulation);
 			long bwps = 0;
 			while (bwps <= 0) {
-				bwps = (long) (dist.sample() * bwpsPerPe);
+				bwps = (long) (dist.sample() * Parameters.bwpsPerPe);
 			}
 			mean = 1d;
 			dev = Parameters.ioHeterogeneityCV;
@@ -223,7 +199,7 @@ public class WorkflowExample {
 					Parameters.ioHeterogeneityPopulation);
 			long iops = 0;
 			while (iops <= 0) {
-				iops = (long) (long) (dist.sample() * iopsPerPe);
+				iops = (long) (long) (dist.sample() * Parameters.iopsPerPe);
 			}
 			mean = 1d;
 			dev = Parameters.cpuHeterogeneityCV;
@@ -239,7 +215,7 @@ public class WorkflowExample {
 					Parameters.cpuHeterogeneityPopulation);
 			long mips = 0;
 			while (mips <= 0) {
-				mips = (long) (long) (dist.sample() * mipsPerCoreOpteron270);
+				mips = (long) (long) (dist.sample() * Parameters.mipsPerCoreOpteron270);
 			}
 			if (numGen.nextDouble() < Parameters.likelihoodOfStraggler) {
 				bwps *= Parameters.stragglerPerformanceCoefficient;
@@ -247,11 +223,11 @@ public class WorkflowExample {
 				mips *= Parameters.stragglerPerformanceCoefficient;
 			}
 			hostList.add(new DynamicHost(hostId++, ram, bwps, iops, storage,
-					nCusPerCoreOpteron270, nCoresOpteron270, mips));
+					Parameters.nCusPerCoreOpteron270, Parameters.nCoresOpteron270, mips));
 		}
 
-		ram = (int) (2 * 1024 * nCusPerCoreOpteron2218 * nCoresOpteron2218);
-		for (int i = 0; i < nOpteron2218; i++) {
+		ram = (int) (2 * 1024 * Parameters.nCusPerCoreOpteron2218 * Parameters.nCoresOpteron2218);
+		for (int i = 0; i < Parameters.nOpteron2218; i++) {
 			double mean = 1d;
 			double dev = Parameters.bwHeterogeneityCV;
 			ContinuousDistribution dist = Parameters.getDistribution(
@@ -266,7 +242,7 @@ public class WorkflowExample {
 					Parameters.bwHeterogeneityPopulation);
 			long bwps = 0;
 			while (bwps <= 0) {
-				bwps = (long) (dist.sample() * bwpsPerPe);
+				bwps = (long) (dist.sample() * Parameters.bwpsPerPe);
 			}
 			mean = 1d;
 			dev = Parameters.ioHeterogeneityCV;
@@ -282,7 +258,7 @@ public class WorkflowExample {
 					Parameters.ioHeterogeneityPopulation);
 			long iops = 0;
 			while (iops <= 0) {
-				iops = (long) (long) (dist.sample() * iopsPerPe);
+				iops = (long) (long) (dist.sample() * Parameters.iopsPerPe);
 			}
 			mean = 1d;
 			dev = Parameters.cpuHeterogeneityCV;
@@ -298,7 +274,7 @@ public class WorkflowExample {
 					Parameters.cpuHeterogeneityPopulation);
 			long mips = 0;
 			while (mips <= 0) {
-				mips = (long) (long) (dist.sample() * mipsPerCoreOpteron2218);
+				mips = (long) (long) (dist.sample() * Parameters.mipsPerCoreOpteron2218);
 			}
 			if (numGen.nextDouble() < Parameters.likelihoodOfStraggler) {
 				bwps *= Parameters.stragglerPerformanceCoefficient;
@@ -306,11 +282,11 @@ public class WorkflowExample {
 				mips *= Parameters.stragglerPerformanceCoefficient;
 			}
 			hostList.add(new DynamicHost(hostId++, ram, bwps, iops, storage,
-					nCusPerCoreOpteron2218, nCoresOpteron2218, mips));
+					Parameters.nCusPerCoreOpteron2218, Parameters.nCoresOpteron2218, mips));
 		}
 
-		ram = (int) (2 * 1024 * nCusPerCoreXeonE5430 * nCoresXeonE5430);
-		for (int i = 0; i < nXeonE5430; i++) {
+		ram = (int) (2 * 1024 * Parameters.nCusPerCoreXeonE5430 * Parameters.nCoresXeonE5430);
+		for (int i = 0; i < Parameters.nXeonE5430; i++) {
 			double mean = 1d;
 			double dev = Parameters.bwHeterogeneityCV;
 			ContinuousDistribution dist = Parameters.getDistribution(
@@ -325,7 +301,7 @@ public class WorkflowExample {
 					Parameters.bwHeterogeneityPopulation);
 			long bwps = 0;
 			while (bwps <= 0) {
-				bwps = (long) (dist.sample() * bwpsPerPe);
+				bwps = (long) (dist.sample() * Parameters.bwpsPerPe);
 			}
 			mean = 1d;
 			dev = Parameters.ioHeterogeneityCV;
@@ -341,7 +317,7 @@ public class WorkflowExample {
 					Parameters.ioHeterogeneityPopulation);
 			long iops = 0;
 			while (iops <= 0) {
-				iops = (long) (long) (dist.sample() * iopsPerPe);
+				iops = (long) (long) (dist.sample() * Parameters.iopsPerPe);
 			}
 			mean = 1d;
 			dev = Parameters.cpuHeterogeneityCV;
@@ -357,7 +333,7 @@ public class WorkflowExample {
 					Parameters.cpuHeterogeneityPopulation);
 			long mips = 0;
 			while (mips <= 0) {
-				mips = (long) (long) (dist.sample() * mipsPerCoreXeonE5430);
+				mips = (long) (long) (dist.sample() * Parameters.mipsPerCoreXeonE5430);
 			}
 			if (numGen.nextDouble() < Parameters.likelihoodOfStraggler) {
 				bwps *= Parameters.stragglerPerformanceCoefficient;
@@ -365,7 +341,7 @@ public class WorkflowExample {
 				mips *= Parameters.stragglerPerformanceCoefficient;
 			}
 			hostList.add(new DynamicHost(hostId++, ram, bwps, iops, storage,
-					nCusPerCoreXeonE5430, nCoresXeonE5430, mips));
+					Parameters.nCusPerCoreXeonE5430, Parameters.nCoresXeonE5430, mips));
 		}
 
 		String arch = "x86";
@@ -405,14 +381,14 @@ public class WorkflowExample {
 		String vmm = "Xen";
 
 		// create VMs
-		Vm[] vm = new DynamicVm[nVms];
+		Vm[] vm = new DynamicVm[Parameters.nVms];
 
-		for (int i = 0; i < nVms; i++) {
+		for (int i = 0; i < Parameters.nVms; i++) {
 			DynamicModel dynamicModel = new DynamicModel();
-			vm[i] = new DynamicVm(i, userId, numberOfCusPerPe, numberOfPes,
-					ram, storage, vmm, new CloudletSchedulerGreedyDivided(),
+			vm[i] = new DynamicVm(i, userId, Parameters.numberOfCusPerPe, Parameters.numberOfPes,
+					Parameters.ram, storage, vmm, new CloudletSchedulerGreedyDivided(),
 					dynamicModel, "output/run_" + run + "_vm_" + i + ".csv",
-					taskSlotsPerVm);
+					Parameters.taskSlotsPerVm);
 			list.add(vm[i]);
 		}
 

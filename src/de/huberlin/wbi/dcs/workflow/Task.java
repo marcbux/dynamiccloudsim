@@ -19,9 +19,6 @@ public class Task extends HeterogeneousCloudlet implements Comparable<Task> {
 	private int depth;
 	
 	private static int maxDepth;
-	private static long totalMi;
-	private static long totalIo;
-	private static long totalBw;
 	
 	// LATE parameters
 	private double progressScore;
@@ -41,7 +38,7 @@ public class Task extends HeterogeneousCloudlet implements Comparable<Task> {
 			final Workflow workflow,
 			final int userId,
 			final int cloudletId,
-			final long cloudletLength,
+			final long miLength,
 			final long ioLength,
 			final long bwLength,
 			final int pesNumber,
@@ -52,7 +49,7 @@ public class Task extends HeterogeneousCloudlet implements Comparable<Task> {
 			final UtilizationModel utilizationModelBw) {
 		super(
 				cloudletId,
-				cloudletLength,
+				miLength,
 				ioLength,
 				bwLength,
 				pesNumber,
@@ -61,9 +58,6 @@ public class Task extends HeterogeneousCloudlet implements Comparable<Task> {
 				utilizationModelCpu,
 				utilizationModelRam,
 				utilizationModelBw);
-		totalMi += cloudletLength;
-		totalIo += ioLength;
-		totalBw += bwLength;
 		this.name = name;
 		this.params=params;
 		this.workflow = workflow;
@@ -116,18 +110,6 @@ public class Task extends HeterogeneousCloudlet implements Comparable<Task> {
 	
 	public Workflow getWorkflow() {
 		return workflow;
-	}
-	
-	public static long getTotalBw() {
-		return totalBw;
-	}
-	
-	public static long getTotalIo() {
-		return totalIo;
-	}
-	
-	public static long getTotalMi() {
-		return totalMi;
 	}
 	
 	public static int getMaxDepth() {
@@ -215,6 +197,5 @@ public class Task extends HeterogeneousCloudlet implements Comparable<Task> {
 	public boolean isSpeculativeCopy() {
 		return speculativeCopy;
 	}
-	
 	
 }

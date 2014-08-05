@@ -1,7 +1,14 @@
 package de.huberlin.wbi.dcs.workflow.scheduler;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Queue;
 
@@ -18,49 +25,134 @@ import de.huberlin.wbi.dcs.workflow.Workflow;
 
 public class C2O extends WorkflowScheduler {
 
+	public static boolean printEstimatesVsRuntimes = true;
+
+	protected DecimalFormat df;
+
 	protected Map<String, Queue<Task>> queuePerTask;
 
 	protected Map<Integer, Map<String, WienerProcessModel>> runtimePerTaskPerVm;
 
-	public class WienerProcessModel {
+	protected int runId;
 
-		double lastFinish = 0d;
-		double lastRuntime = 0d;
-		int numFinished = 0;
+	public class Runtime {
+		private final double timestamp;
+		private final double runtime;
 
-		double sigma = 0d;
-
-		public void addRuntime(double finish, double runtime) {
-			runtime = Math.log(runtime);
-			if (numFinished > 0) {
-				sigma += Math.pow((runtime - lastRuntime), 2d)
-						/ (finish - lastFinish);
-			}
-			lastFinish = finish;
-			lastRuntime = runtime;
-			numFinished++;
+		public Runtime(double timestamp, double runtime) {
+			this.timestamp = timestamp;
+			this.runtime = runtime;
 		}
 
-		public double getRuntime(double time) {
-			switch (numFinished) {
-			case 0:
-				return 0d;
-			case 1:
-				return Double.MIN_VALUE;
-			default:
-				double sd = (sigma / (numFinished - 1)) * (time - lastFinish);
-				double estimatedRuntime = (sd == 0d) ? lastRuntime
-						: new NormalDistribution(lastRuntime, sd)
-								.inverseCumulativeProbability(0.25);
-				return Math.pow(Math.E, estimatedRuntime);
-			}
+		public double getRuntime() {
+			return runtime;
+		}
+
+		public double getTimestamp() {
+			return timestamp;
+		}
+
+		@Override
+		public String toString() {
+			return df.format(timestamp) + "," + df.format(runtime);
 		}
 	}
 
-	public C2O(String name, int taskSlotsPerVm) throws Exception {
+	public class WienerProcessModel {
+
+		protected final double percentile = 0.25;
+
+		protected String taskName;
+		protected int vmId;
+
+		protected Deque<Runtime> measurements;
+		protected Queue<Double> differences;
+		protected double sumOfDifferences;
+		protected Deque<Runtime> estimates;
+
+		public WienerProcessModel(String taskName, int vmId) {
+			this.taskName = taskName;
+			this.vmId = vmId;
+			measurements = new LinkedList<>();
+			differences = new LinkedList<>();
+			estimates = new LinkedList<>();
+		}
+
+		public void printEstimatesVsRuntimes() {
+			try (BufferedWriter writer = new BufferedWriter(new FileWriter(
+					"run" + runId + "_vm" + vmId + "_" + taskName + ".csv"))) {
+				writer.write("time;estimate;measurement\n");
+				for (Runtime measurement : measurements) {
+					writer.write(df.format(measurement.getTimestamp() / 60)
+							+ ";;"
+							+ df.format(Math.pow(Math.E,
+									measurement.getRuntime()) / 60) + "\n");
+				}
+				for (Runtime estimate : estimates) {
+					writer.write(df.format(estimate.getTimestamp() / 60)
+							+ ";"
+							+ df.format(Math.pow(Math.E, estimate.getRuntime()) / 60)
+							+ ";\n");
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+
+		public void addRuntime(double timestamp, double runtime) {
+			Runtime measurement = new Runtime(timestamp, Math.log(runtime));
+			if (!measurements.isEmpty()) {
+				Runtime lastMeasurement = measurements.getLast();
+				double difference = (measurement.getRuntime() - lastMeasurement
+						.getRuntime())
+						/ (measurement.getTimestamp() - lastMeasurement
+								.getTimestamp());
+				sumOfDifferences += difference;
+				differences.add(difference);
+			}
+			measurements.add(measurement);
+		}
+
+		public double getEstimate(double timestamp) {
+			if (differences.size() < 2) {
+				return 0d;
+			}
+
+			Runtime lastMeasurement = measurements.getLast();
+			double variance = 0d;
+			double avgDifference = sumOfDifferences / differences.size();
+			for (double difference : differences) {
+				variance += Math.pow(difference - avgDifference, 2d);
+			}
+			variance /= differences.size() - 1;
+			variance *= timestamp - lastMeasurement.getTimestamp();
+
+			double estimate = lastMeasurement.getRuntime();
+
+			if (variance > 0d) {
+				NormalDistribution nd = new NormalDistribution(
+						lastMeasurement.getRuntime(), Math.sqrt(variance));
+				estimate = nd.inverseCumulativeProbability(percentile);
+
+			}
+
+			Runtime runtime = new Runtime(timestamp, estimate);
+
+			estimates.add(runtime);
+
+			return Math.pow(Math.E, estimate);
+		}
+	}
+
+	public C2O(String name, int taskSlotsPerVm, int runId) throws Exception {
 		super(name, taskSlotsPerVm);
 		queuePerTask = new HashMap<>();
 		runtimePerTaskPerVm = new HashMap<>();
+		this.runId = runId;
+		Locale loc = new Locale("en");
+		df = (DecimalFormat) NumberFormat.getNumberInstance(loc);
+		df.applyPattern("###.####");
+		df.setMaximumIntegerDigits(7);
 	}
 
 	@Override
@@ -87,7 +179,7 @@ public class C2O extends WorkflowScheduler {
 					queuePerTask.put(task.getName(), q);
 					for (int id : vms.keySet()) {
 						runtimePerTaskPerVm.get(id).put(task.getName(),
-								new WienerProcessModel());
+								new WienerProcessModel(task.getName(), id));
 					}
 				}
 
@@ -108,21 +200,32 @@ public class C2O extends WorkflowScheduler {
 			// for this VM, compute the runtime of each task, relative to the
 			// other VMs; then, select the task with the lowest (relative)
 			// runtime
-			double minRelativeRuntime = Double.MAX_VALUE;
+			double minRelativeEstimate = Double.MAX_VALUE;
 			String selectedTask = "";
 			for (String task : queuePerTask.keySet()) {
 				if (!queuePerTask.get(task).isEmpty()) {
-					double sumOfRuntimes = 0d;
-					for (Integer vmId : vms.keySet()) {
-						sumOfRuntimes += runtimePerTaskPerVm.get(vmId)
-								.get(task).getRuntime(CloudSim.clock());
+					double estimate = runtimePerTaskPerVm.get(vm.getId())
+							.get(task).getEstimate(CloudSim.clock());
+					double relativeEstimate = 0d;
+
+					if (estimate > 0) {
+						double sumOfEstimates = 0d;
+						int numEstimates = 0;
+						for (Integer vmId : vms.keySet()) {
+							double runningEstimate = (vmId == vm.getId()) ? estimate
+									: runtimePerTaskPerVm.get(vmId).get(task)
+											.getEstimate(CloudSim.clock());
+							if (runningEstimate > 0) {
+								sumOfEstimates += runningEstimate;
+								numEstimates++;
+							}
+						}
+						double avgEstimate = sumOfEstimates / numEstimates;
+						relativeEstimate = estimate / avgEstimate;
 					}
-					double relativeRuntime = (sumOfRuntimes == 0d) ? 0d
-							: runtimePerTaskPerVm.get(vm.getId()).get(task)
-									.getRuntime(CloudSim.clock())
-									/ sumOfRuntimes;
-					if (relativeRuntime < minRelativeRuntime) {
-						minRelativeRuntime = relativeRuntime;
+
+					if (relativeEstimate < minRelativeEstimate) {
+						minRelativeEstimate = relativeEstimate;
 						selectedTask = task;
 					}
 				}
@@ -179,6 +282,12 @@ public class C2O extends WorkflowScheduler {
 				* getTaskSlotsPerVm()) {
 			Log.printLine(CloudSim.clock() + ": " + getName()
 					+ ": All Tasks executed. Finishing...");
+			for (Map<String, WienerProcessModel> m : runtimePerTaskPerVm
+					.values()) {
+				for (WienerProcessModel w : m.values()) {
+					w.printEstimatesVsRuntimes();
+				}
+			}
 			clearDatacenters();
 			finishExecution();
 		}

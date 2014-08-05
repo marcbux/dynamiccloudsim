@@ -5,9 +5,13 @@ import org.cloudbus.cloudsim.UtilizationModel;
 
 public class HeterogeneousCloudlet extends Cloudlet {
 	
-	private long mi;
-	private long io;
-	private long bw;
+	private long mi = 0;
+	private long io = 0;
+	private long bw = 0;
+	
+	private static long totalMi = 0;
+	private static long totalIo = 0;
+	private static long totalBw = 0;
 	
 	public HeterogeneousCloudlet(
 			final int cloudletId,
@@ -22,7 +26,7 @@ public class HeterogeneousCloudlet extends Cloudlet {
 			final UtilizationModel utilizationModelBw) {
 		super(
 				cloudletId,
-				mi + io + bw,
+				0,
 				pesNumber,
 				cloudletFileSize,
 				cloudletOutputSize,
@@ -30,9 +34,13 @@ public class HeterogeneousCloudlet extends Cloudlet {
 				utilizationModelRam,
 				utilizationModelBw,
 				true);
-		setMi(mi);
-		setIo(io);
-		setBw(bw);
+		incMi(mi);
+		incIo(io);
+		incBw(bw);
+	}
+	
+	private void updateLength() {
+		setCloudletLength(mi + io + bw);
 	}
 	
 	@Override
@@ -52,16 +60,34 @@ public class HeterogeneousCloudlet extends Cloudlet {
 		return mi;
 	}
 	
-	public void setBw(long bw) {
-		this.bw = bw;
+	public void incBw(long bw) {
+		this.bw += bw;
+		totalBw += bw;
+		updateLength();
 	}
 	
-	public void setIo(long io) {
-		this.io = io;
+	public void incIo(long io) {
+		this.io += io;
+		totalIo += io;
+		updateLength();
 	}
 	
-	public void setMi(long mi) {
-		this.mi = mi;
+	public void incMi(long mi) {
+		this.mi += mi;
+		totalMi += mi;
+		updateLength();
+	}
+	
+	public static long getTotalBw() {
+		return totalBw;
+	}
+	
+	public static long getTotalIo() {
+		return totalIo;
+	}
+	
+	public static long getTotalMi() {
+		return totalMi;
 	}
 	
 }

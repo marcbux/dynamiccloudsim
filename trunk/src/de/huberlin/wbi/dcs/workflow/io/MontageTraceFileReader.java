@@ -41,7 +41,7 @@ public class MontageTraceFileReader extends LogFileReader {
 					}
 					int fileSize = 1;
 					if (splitLine.length > 4) {
-						fileSize = Integer.parseInt(splitLine[4]) / 1000;
+						fileSize = Integer.parseInt(splitLine[4]) / 1024;
 					}
 					fileSize = (fileSize > 0) ? fileSize : 1;
 					
@@ -70,7 +70,7 @@ public class MontageTraceFileReader extends LogFileReader {
 					}
 					int fileSize = 1;
 					if (splitLine.length > 4) {
-						fileSize = Integer.parseInt(splitLine[4]) / 1000;
+						fileSize = Integer.parseInt(splitLine[4]) / 1024;
 					}
 					fileSize = (fileSize > 0) ? fileSize : 1;
 					

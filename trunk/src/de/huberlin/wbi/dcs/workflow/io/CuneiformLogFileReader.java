@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import org.cloudbus.cloudsim.File;
 import org.cloudbus.cloudsim.ParameterException;
 
-import de.huberlin.hiwaydb.useDB.HiwayDBI;
 import de.huberlin.wbi.cuneiform.core.semanticmodel.JsonReportEntry;
 import de.huberlin.wbi.dcs.workflow.Task;
 import de.huberlin.wbi.dcs.workflow.Workflow;
@@ -24,41 +23,41 @@ public class CuneiformLogFileReader extends LogFileReader {
 			while ((line = reader.readLine()) != null) {
 				JsonReportEntry e = new JsonReportEntry(line);
 				Task task = null;
-				if (e.hasTaskId()) {
-					task = createOrGetTask(e.getTaskId(), e.getTaskName(),
+				if (e.hasInvocId()) {
+					task = createOrGetTask(e.getInvocId(), e.getTaskName(),
 							workflow, userId);
 				}
 				switch (e.getKey()) {
 				case JsonReportEntry.KEY_INVOC_TIME:
-					task.setMi(e.getValueJsonObj().getLong("realTime"));
+					task.incMi(e.getValueJsonObj().getLong("realTime"));
 					break;
 				case JsonReportEntry.KEY_FILE_SIZE_STAGEIN:
 					String fileName = e.getFile();
-					int fileSize = Integer.parseInt(e.getValueRawString());
+					long fileSize = Long.parseLong(e.getValueRawString())  / 1024;
 					if (fileSize > 0) {
-						createOrGetFile(fileName, fileSize);
-						task.setIo(task.getIo() + fileSize);
+						createOrGetFile(fileName, (int)fileSize);
+						task.incIo(fileSize);
 						fileNameToConsumingTaskIds.get(fileName).add(
-								e.getTaskId());
+								e.getInvocId());
 					}
 					break;
 				case JsonReportEntry.KEY_FILE_SIZE_STAGEOUT:
 					fileName = e.getFile();
-					fileSize = Integer.parseInt(e.getValueRawString());
+					fileSize = Long.parseLong(e.getValueRawString()) / 1024;
 					if (fileSize > 0) {
-						createOrGetFile(e.getFile(), fileSize);
-						task.setIo(task.getIo() + fileSize);
-						fileNameToProducingTaskId.put(fileName, e.getTaskId());
+						createOrGetFile(e.getFile(), (int)fileSize);
+						task.incIo(fileSize);
+						fileNameToProducingTaskId.put(fileName, e.getInvocId());
 					}
 					break;
-				case HiwayDBI.KEY_INVOC_TIME_STAGEIN:
-					task.setBw(task.getBw()
-							+ e.getValueJsonObj().getLong("realTime"));
-					break;
-				case HiwayDBI.KEY_INVOC_TIME_STAGEOUT:
-					task.setBw(task.getBw()
-							+ e.getValueJsonObj().getLong("realTime"));
-					break;
+//				case HiwayDBI.KEY_INVOC_TIME_STAGEIN:
+//					task.setBw(task.getBw()
+//							+ e.getValueJsonObj().getLong("realTime"));
+//					break;
+//				case HiwayDBI.KEY_INVOC_TIME_STAGEOUT:
+//					task.setBw(task.getBw()
+//							+ e.getValueJsonObj().getLong("realTime"));
+//					break;
 				}
 			}
 		} catch (IOException e1) {
@@ -66,7 +65,7 @@ public class CuneiformLogFileReader extends LogFileReader {
 		}
 	}
 
-	private Task createOrGetTask(Long taskId, String taskName,
+	private Task createOrGetTask(long taskId, String taskName,
 			Workflow workflow, int userId) {
 		if (!taskIdToTask.containsKey(taskId)) {
 			Task task = new Task(taskName, "", workflow, userId, cloudletId++,

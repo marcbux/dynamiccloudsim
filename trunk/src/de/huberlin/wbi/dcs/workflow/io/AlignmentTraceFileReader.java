@@ -40,7 +40,7 @@ public class AlignmentTraceFileReader extends LogFileReader {
 						fileName = fileName.substring(Math.max(0,
 								fileName.lastIndexOf('/') + 1));
 					}
-					int fileSize = Integer.parseInt(splitLine[4]) / 1000;
+					int fileSize = Integer.parseInt(splitLine[4]) / 1024;
 					fileSize = (fileSize > 0) ? fileSize : 1;
 
 					if (!fileNameToFile.containsKey(fileName)) {
@@ -70,7 +70,7 @@ public class AlignmentTraceFileReader extends LogFileReader {
 						fileName = fileName.substring(Math.max(0,
 								fileName.lastIndexOf('/') + 1));
 					}
-					int fileSize = Integer.parseInt(splitLine[4]) / 1000;
+					int fileSize = Integer.parseInt(splitLine[4]) / 1024;
 					fileSize = (fileSize > 0) ? fileSize : 1;
 
 					if (!fileNameToFile.containsKey(fileName)) {

@@ -111,7 +111,7 @@ public class DaxFileReader extends LogFileReader {
 						jobQueue.add(childId);
 				}
 
-				long ioLength = inputSize + outputSize;
+				long ioLength = (inputSize + outputSize) / 1024;
 
 				Task task = new Task(taskName, params, workflow, userId,
 						(int) cloudletId, cloudletLength, ioLength, bwLength,

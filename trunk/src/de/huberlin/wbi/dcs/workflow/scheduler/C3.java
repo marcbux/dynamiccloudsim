@@ -21,7 +21,7 @@ import de.huberlin.wbi.dcs.workflow.Workflow;
 
 public class C3 extends WorkflowScheduler {
 	
-	boolean doSample = false;
+	boolean doSample = true;
 	
 	Random numGen;
 	
@@ -42,7 +42,7 @@ public class C3 extends WorkflowScheduler {
 	// for each VM and each task category, remember the last execution time
 	protected Map<Integer, Map<String, Double>> lastRuntimePerTaskCategoryAndVmId;
 	
-	protected Map<Integer, Task> speculativeTasks;
+//	protected Map<Integer, Task> speculativeTasks;
 	
 	/* 
 	 * The basic concept of this scheduler is as follows:

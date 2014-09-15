@@ -5,6 +5,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
+import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -13,25 +14,20 @@ import java.util.Map;
 import java.util.Queue;
 
 import org.apache.commons.math3.distribution.NormalDistribution;
-import org.cloudbus.cloudsim.Cloudlet;
-import org.cloudbus.cloudsim.Log;
 import org.cloudbus.cloudsim.Vm;
 import org.cloudbus.cloudsim.core.CloudSim;
-import org.cloudbus.cloudsim.core.SimEvent;
 
-import de.huberlin.wbi.dcs.workflow.DataDependency;
 import de.huberlin.wbi.dcs.workflow.Task;
-import de.huberlin.wbi.dcs.workflow.Workflow;
 
-public class C2O extends WorkflowScheduler {
+public class C2O extends AbstractWorkflowScheduler {
 
-	public static boolean printEstimatesVsRuntimes = true;
+	public static boolean printEstimatesVsRuntimes = false;
 
 	protected DecimalFormat df;
 
 	protected Map<String, Queue<Task>> queuePerTask;
 
-	protected Map<Integer, Map<String, WienerProcessModel>> runtimePerTaskPerVm;
+	protected Map<Vm, Map<String, WienerProcessModel>> runtimePerTaskPerVm;
 
 	protected int runId;
 
@@ -60,7 +56,7 @@ public class C2O extends WorkflowScheduler {
 
 	public class WienerProcessModel {
 
-		protected final double percentile = 0.25;
+		protected final double percentile = 0.01;
 
 		protected String taskName;
 		protected int vmId;
@@ -156,86 +152,72 @@ public class C2O extends WorkflowScheduler {
 	}
 
 	@Override
-	protected void submitCloudlets() {
-		registerVms();
-		registerTasks();
-		submitTasks();
+	public void reschedule(Collection<Task> tasks, Collection<Vm> vms) {
+		for (Vm vm : vms) {
+			if (!runtimePerTaskPerVm.containsKey(vm)) {
+				Map<String, WienerProcessModel> runtimePerTask = new HashMap<>();
+				runtimePerTaskPerVm.put(vm, runtimePerTask);
+			}
+		}
+		for (Task task : tasks) {
+			if (!queuePerTask.containsKey(task.getName())) {
+				Queue<Task> q = new LinkedList<>();
+				queuePerTask.put(task.getName(), q);
+				for (Vm vm : vms) {
+					runtimePerTaskPerVm.get(vm).put(task.getName(),
+							new WienerProcessModel(task.getName(), vm.getId()));
+				}
+			}
+		}
 	}
 
 	@Override
-	protected void registerVms() {
-		super.registerVms();
-		for (int id : vms.keySet()) {
-			Map<String, WienerProcessModel> runtimePerTask = new HashMap<>();
-			runtimePerTaskPerVm.put(id, runtimePerTask);
-		}
-	}
+	public Task getNextTask(Vm vm) {
+		// for this VM, compute the runtime of each task, relative to the
+		// other VMs; then, select the task with the lowest (relative)
+		// runtime
+		double minRelativeEstimate = Double.MAX_VALUE;
+		String selectedTask = "";
+		for (String task : queuePerTask.keySet()) {
+			if (!queuePerTask.get(task).isEmpty()) {
+				double estimate = runtimePerTaskPerVm.get(vm).get(task)
+						.getEstimate(CloudSim.clock());
+				double relativeEstimate = 0d;
 
-	protected void registerTasks() {
-		for (Workflow workflow : workflows) {
-			for (Task task : workflow.getSortedTasks()) {
-				if (!queuePerTask.containsKey(task.getName())) {
-					Queue<Task> q = new LinkedList<>();
-					queuePerTask.put(task.getName(), q);
-					for (int id : vms.keySet()) {
-						runtimePerTaskPerVm.get(id).put(task.getName(),
-								new WienerProcessModel(task.getName(), id));
-					}
-				}
-
-				if (task.readyToExecute()) {
-					queuePerTask.get(task.getName()).add(task);
-				}
-			}
-		}
-	}
-
-	protected void submitTasks() {
-		while (!idleTaskSlots.isEmpty()) {
-			if (!tasksInQueue()) {
-				break;
-			}
-			Vm vm = idleTaskSlots.remove();
-
-			// for this VM, compute the runtime of each task, relative to the
-			// other VMs; then, select the task with the lowest (relative)
-			// runtime
-			double minRelativeEstimate = Double.MAX_VALUE;
-			String selectedTask = "";
-			for (String task : queuePerTask.keySet()) {
-				if (!queuePerTask.get(task).isEmpty()) {
-					double estimate = runtimePerTaskPerVm.get(vm.getId())
-							.get(task).getEstimate(CloudSim.clock());
-					double relativeEstimate = 0d;
-
-					if (estimate > 0) {
-						double sumOfEstimates = 0d;
-						int numEstimates = 0;
-						for (Integer vmId : vms.keySet()) {
-							double runningEstimate = (vmId == vm.getId()) ? estimate
-									: runtimePerTaskPerVm.get(vmId).get(task)
-											.getEstimate(CloudSim.clock());
-							if (runningEstimate > 0) {
-								sumOfEstimates += runningEstimate;
-								numEstimates++;
-							}
+				if (estimate > 0) {
+					double sumOfEstimates = 0d;
+					int numEstimates = 0;
+					for (Vm runningVm : runtimePerTaskPerVm.keySet()) {
+						double runningEstimate = (runningVm.getId() == vm
+								.getId()) ? estimate : runtimePerTaskPerVm
+								.get(runningVm).get(task)
+								.getEstimate(CloudSim.clock());
+						if (runningEstimate > 0) {
+							sumOfEstimates += runningEstimate;
+							numEstimates++;
 						}
-						double avgEstimate = sumOfEstimates / numEstimates;
-						relativeEstimate = estimate / avgEstimate;
 					}
+					double avgEstimate = sumOfEstimates / numEstimates;
+					relativeEstimate = estimate / avgEstimate;
+				}
 
-					if (relativeEstimate < minRelativeEstimate) {
-						minRelativeEstimate = relativeEstimate;
-						selectedTask = task;
-					}
+				if (relativeEstimate < minRelativeEstimate) {
+					minRelativeEstimate = relativeEstimate;
+					selectedTask = task;
 				}
 			}
-
-			submitTask(queuePerTask.get(selectedTask).remove(), vm);
 		}
+
+		return (queuePerTask.get(selectedTask).remove());
 	}
 
-	private boolean tasksInQueue() {
+	@Override
+	public void taskReady(Task task) {
+		queuePerTask.get(task.getName()).add(task);
+	}
+
+	@Override
+	public boolean tasksRemaining() {
 		for (Queue<Task> queue : queuePerTask.values()) {
 			if (!queue.isEmpty()) {
 				return true;
@@ -245,52 +227,24 @@ public class C2O extends WorkflowScheduler {
 	}
 
 	@Override
-	protected void processCloudletReturn(SimEvent ev) {
-		Task task = (Task) ev.getData();
-		Vm vm = vms.get(task.getVmId());
-		idleTaskSlots.add(vm);
-		if (task.getCloudletStatus() == Cloudlet.SUCCESS) {
-			Log.printLine(CloudSim.clock() + ": " + getName() + ": VM # "
-					+ vm.getId() + " completed Task # " + task.getCloudletId()
-					+ " \"" + task.getName() + " " + task.getParams() + " \"");
+	public void taskSucceeded(Task task, Vm vm) {
+		double runtime = task.getFinishTime() - task.getExecStartTime();
+		runtimePerTaskPerVm.get(vm).get(task.getName())
+				.addRuntime(task.getFinishTime(), runtime);
+	}
 
-			double runtime = task.getFinishTime() - task.getExecStartTime();
-			runtimePerTaskPerVm.get(vm.getId()).get(task.getName())
-					.addRuntime(task.getFinishTime(), runtime);
+	@Override
+	public void taskFailed(Task task, Vm vm) {
+	}
 
-			for (DataDependency outgoingEdge : task.getWorkflow().getGraph()
-					.getOutEdges(task)) {
-				Task child = task.getWorkflow().getGraph()
-						.getDest(outgoingEdge);
-				child.decNDataDependencies();
-				if (child.readyToExecute()) {
-					queuePerTask.get(child.getName()).add(child);
-				}
+	@Override
+	public void terminate() {
+		for (Map<String, WienerProcessModel> m : runtimePerTaskPerVm.values()) {
+			for (WienerProcessModel w : m.values()) {
+				w.printEstimatesVsRuntimes();
 			}
-		} else {
-			Log.printLine(CloudSim.clock() + ": " + getName() + ": VM # "
-					+ vm.getId() + " encountered an error with Task # "
-					+ task.getCloudletId() + " \"" + task.getName() + " "
-					+ task.getParams() + " \"");
-			resetTask(task);
-			queuePerTask.get(task.getName()).add(task);
 		}
 
-		if (tasksInQueue()) {
-			submitTasks();
-		} else if (idleTaskSlots.size() == getVmsCreatedList().size()
-				* getTaskSlotsPerVm()) {
-			Log.printLine(CloudSim.clock() + ": " + getName()
-					+ ": All Tasks executed. Finishing...");
-			for (Map<String, WienerProcessModel> m : runtimePerTaskPerVm
-					.values()) {
-				for (WienerProcessModel w : m.values()) {
-					w.printEstimatesVsRuntimes();
-				}
-			}
-			clearDatacenters();
-			finishExecution();
-		}
 	}
 
 }

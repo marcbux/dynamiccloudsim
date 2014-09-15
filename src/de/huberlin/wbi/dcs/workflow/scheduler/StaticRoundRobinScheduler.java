@@ -1,111 +1,98 @@
 package de.huberlin.wbi.dcs.workflow.scheduler;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 
-import org.cloudbus.cloudsim.Cloudlet;
 import org.cloudbus.cloudsim.Log;
 import org.cloudbus.cloudsim.Vm;
 import org.cloudbus.cloudsim.core.CloudSim;
-import org.cloudbus.cloudsim.core.SimEvent;
 
-import de.huberlin.wbi.dcs.workflow.DataDependency;
 import de.huberlin.wbi.dcs.workflow.Task;
-import de.huberlin.wbi.dcs.workflow.Workflow;
 
 /*
  * The StaticRoundRobinScheduler distributes tasks evenly among Vms prior to execution.
  */
-public class StaticRoundRobinScheduler extends WorkflowScheduler {
+public class StaticRoundRobinScheduler extends AbstractWorkflowScheduler {
 
 	// stores, which vm id is assigned which task ids
-	protected Map<Integer, ArrayList<Task>> assignedTasks;
+	protected Map<Task, Vm> schedule;
+	protected Map<Vm, Queue<Task>> readyTasks;
+	private Iterator<Vm> vmIt;
 
-	public StaticRoundRobinScheduler(String name, int taskSlotsPerVm) throws Exception {
+	public StaticRoundRobinScheduler(String name, int taskSlotsPerVm)
+			throws Exception {
 		super(name, taskSlotsPerVm);
-		assignedTasks = new HashMap<Integer, ArrayList<Task>>();
+		schedule = new HashMap<>();
+		readyTasks = new HashMap<>();
 	}
 
-	/**
-	 * Submit cloudlets to the created VMs. This function is called after Vms
-	 * have been created.
-	 * 
-	 * @pre $none
-	 * @post $none
-	 */
 	@Override
-	protected void submitCloudlets() {
-		super.registerVms();
-		for (int vmId : vms.keySet()) {
-			assignedTasks.put(vmId, new ArrayList<Task>());
+	public Task getNextTask(Vm vm) {
+		Queue<Task> tasks = readyTasks.get(vm);
+		if (tasks.size() > 0) {
+			return tasks.remove();
 		}
-		Iterator<Vm> it = vms.values().iterator();
-		for (Workflow workflow : workflows) {
-			for (Task task : workflow.getSortedTasks()) {
-				if (!it.hasNext()) {
-					it = vms.values().iterator();
-				}
-				Vm vm = it.next();
-				assignedTasks.get(vm.getId()).add(task);
-				Log.printLine(CloudSim.clock() + ": " + getName() + ": Assigning Task # " + task.getCloudletId() + " \"" + task.getName() + " " + task.getParams() + " \""  + " to VM # " + vm.getId());
-			}
-		}
-		submitTasks();
+		return null;
 	}
-	
-	protected void submitTasks() {
-		int nIdleTaskSlots = idleTaskSlots.size();
-		for (int i = 0; i < nIdleTaskSlots; i++) {
-			Vm vm = idleTaskSlots.remove();
-			ArrayList<Task> tasks = assignedTasks.get(vm.getId());
-			boolean taskSubmitted = false;
-			if (tasks != null) {
-				for (int j = 0; j < tasks.size(); j++) {
-					Task task = tasks.get(j);
-					if (task.readyToExecute()) {
-						tasks.remove(j);
-						if (tasks.size() == 0) {
-							assignedTasks.remove(vm.getId());
-						}
-						submitTask(task, vm);
-						taskSubmitted = true;
-						break;
-					}
-				}
-			}
-			if (!taskSubmitted) {
-				idleTaskSlots.add(vm);
-			}
-		}
-	}
-	
+
 	@Override
-	protected void processCloudletReturn(SimEvent ev) {
-		Task task = (Task) ev.getData();
-		Vm vm = vms.get(task.getVmId());
-		if (task.getCloudletStatus() == Cloudlet.SUCCESS) {
-			idleTaskSlots.add(vm);
-			Log.printLine(CloudSim.clock() + ": " + getName() + ": VM # " + vm.getId() + " completed Task # " + task.getCloudletId() + " \"" + task.getName() + " " + task.getParams());
-			for (DataDependency outgoingEdge : task.getWorkflow().getGraph().getOutEdges(task)) {
-				Task child = task.getWorkflow().getGraph().getDest(outgoingEdge);
-				child.decNDataDependencies();
+	public void reschedule(Collection<Task> tasks, Collection<Vm> vms) {
+		for (Vm vm : vms) {
+			if (!readyTasks.containsKey(vm)) {
+				Queue<Task> q = new LinkedList<>();
+				readyTasks.put(vm, q);
+				vmIt = vms.iterator();
 			}
-		} else {
-			Log.printLine(CloudSim.clock() + ": " + getName() + ": VM # " + vm.getId() + " encountered an error with Task # " + task.getCloudletId() + " \"" + task.getName() + " " + task.getParams() + " \"");
-			resetTask(task);
-			submitTask(task, vm);
 		}
 
-		if (assignedTasks.size() == 0) {
+		List<Task> sortedTasks = new ArrayList<>(tasks);
+		Collections.sort(sortedTasks);
+
+		for (Task task : sortedTasks) {
+			if (!vmIt.hasNext()) {
+				vmIt = vms.iterator();
+			}
+			Vm vm = vmIt.next();
+			schedule.put(task, vm);
 			Log.printLine(CloudSim.clock() + ": " + getName()
-					+ ": All Tasks executed. Finishing...");
-			clearDatacenters();
-			finishExecution();
-		} else {
-			submitTasks();
+					+ ": Assigning Task # " + task.getCloudletId() + " \""
+					+ task.getName() + " " + task.getParams() + " \""
+					+ " to VM # " + vm.getId());
 		}
+	}
+
+	@Override
+	public void taskFailed(Task task, Vm vm) {
+	}
+
+	@Override
+	public void taskReady(Task task) {
+		readyTasks.get(schedule.get(task)).add(task);
+	}
+
+	@Override
+	public boolean tasksRemaining() {
+		for (Queue<Task> queue : readyTasks.values()) {
+			if (!queue.isEmpty()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	@Override
+	public void taskSucceeded(Task task, Vm vm) {
+	}
+
+	@Override
+	public void terminate() {
 	}
 
 }

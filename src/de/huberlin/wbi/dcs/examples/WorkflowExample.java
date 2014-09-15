@@ -31,7 +31,7 @@ import de.huberlin.wbi.dcs.workflow.scheduler.GreedyQueueScheduler;
 import de.huberlin.wbi.dcs.workflow.scheduler.HEFTScheduler;
 import de.huberlin.wbi.dcs.workflow.scheduler.LATEScheduler;
 import de.huberlin.wbi.dcs.workflow.scheduler.StaticRoundRobinScheduler;
-import de.huberlin.wbi.dcs.workflow.scheduler.WorkflowScheduler;
+import de.huberlin.wbi.dcs.workflow.scheduler.AbstractWorkflowScheduler;
 
 public class WorkflowExample {
 
@@ -52,7 +52,7 @@ public class WorkflowExample {
 				CloudSim.init(num_user, calendar, trace_flag);
 
 				ex.createDatacenter("Datacenter");
-				WorkflowScheduler scheduler = ex.createScheduler(i);
+				AbstractWorkflowScheduler scheduler = ex.createScheduler(i);
 				ex.createVms(i, scheduler);
 				Workflow workflow = buildWorkflow(scheduler);
 				ex.submitWorkflow(workflow, scheduler);
@@ -83,7 +83,7 @@ public class WorkflowExample {
 
 	}
 
-	public WorkflowScheduler createScheduler(int i) {
+	public AbstractWorkflowScheduler createScheduler(int i) {
 		try {
 			switch (Parameters.scheduler) {
 			case STATIC_ROUND_ROBIN:
@@ -111,13 +111,13 @@ public class WorkflowExample {
 		return null;
 	}
 
-	public void createVms(int run, WorkflowScheduler scheduler) {
+	public void createVms(int run, AbstractWorkflowScheduler scheduler) {
 		// Create VMs
 		List<Vm> vmlist = createVMList(scheduler.getId(), run);
 		scheduler.submitVmList(vmlist);
 	}
 
-	public static Workflow buildWorkflow(WorkflowScheduler scheduler) {
+	public static Workflow buildWorkflow(AbstractWorkflowScheduler scheduler) {
 		switch (Parameters.experiment) {
 		case MONTAGE_TRACE_1:
 			return new MontageTraceFileReader().parseLogFile(scheduler.getId(),
@@ -151,7 +151,7 @@ public class WorkflowExample {
 		return null;
 	}
 
-	public void submitWorkflow(Workflow workflow, WorkflowScheduler scheduler) {
+	public void submitWorkflow(Workflow workflow, AbstractWorkflowScheduler scheduler) {
 		// Create Cloudlets and send them to Scheduler
 		if (Parameters.outputWorkflowGraph) {
 			workflow.visualize(1920, 1200);

@@ -78,11 +78,11 @@ public class Workflow {
 		return workflow.getVertices();
 	}
 	
-	public List<Task> getSortedTasks() {
-		List<Task> tasks = new ArrayList<Task>(getTasks());
-		Collections.sort(tasks);
-		return tasks;
-	}
+//	public List<Task> getSortedTasks() {
+//		List<Task> tasks = new ArrayList<Task>(getTasks());
+//		Collections.sort(tasks);
+//		return tasks;
+//	}
 	
 	public Collection<Task> getChildren(Task task) {
 		return workflow.getSuccessors(task);

@@ -51,7 +51,7 @@ public class Parameters {
 
 	public static Experiment experiment = Experiment.HETEROGENEOUS_TEST_WORKFLOW;
 
-	public static boolean outputDatacenterEvents = false;
+	public static boolean outputDatacenterEvents = true;
 	public static boolean outputWorkflowGraph = false;
 	public static boolean outputVmPerformanceLogs = false;
 
@@ -62,7 +62,8 @@ public class Parameters {
 		STATIC_ROUND_ROBIN, HEFT, JOB_QUEUE, LATE, C3, C2O
 	}
 
-	public static Scheduler scheduler = Scheduler.C2O;
+	public static Scheduler scheduler = Scheduler.LATE
+			;
 	public static int numberOfRuns = 1;
 
 	public enum Distribution {
@@ -194,7 +195,7 @@ public class Parameters {
 	// e.g., Task progress scores, HEFT runtime estimates
 	public static double distortionCV = 0d;
 
-	public static long seed = 133;
+	public static long seed = 101;
 	public static Random numGen = new Random(seed);
 
 	public static ContinuousDistribution getDistribution(

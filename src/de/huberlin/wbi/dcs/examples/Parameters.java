@@ -16,6 +16,8 @@ import de.huberlin.wbi.dcs.distributions.NormalDistribution;
 
 public class Parameters {
 
+	public static boolean considerDataLocality = false;
+	
 	// datacenter params
 	// Kb / s
 	public static long bwpsPerPe = 256;
@@ -62,8 +64,7 @@ public class Parameters {
 		STATIC_ROUND_ROBIN, HEFT, JOB_QUEUE, LATE, C3, C2O
 	}
 
-	public static Scheduler scheduler = Scheduler.LATE
-			;
+	public static Scheduler scheduler = Scheduler.C2O;
 	public static int numberOfRuns = 1;
 
 	public enum Distribution {
@@ -195,7 +196,7 @@ public class Parameters {
 	// e.g., Task progress scores, HEFT runtime estimates
 	public static double distortionCV = 0d;
 
-	public static long seed = 101;
+	public static long seed = 0;
 	public static Random numGen = new Random(seed);
 
 	public static ContinuousDistribution getDistribution(

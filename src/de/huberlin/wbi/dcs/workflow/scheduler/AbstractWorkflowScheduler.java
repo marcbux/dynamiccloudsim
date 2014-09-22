@@ -10,12 +10,14 @@ import java.util.Queue;
 
 import org.cloudbus.cloudsim.Cloudlet;
 import org.cloudbus.cloudsim.DatacenterBroker;
+import org.cloudbus.cloudsim.Host;
 import org.cloudbus.cloudsim.Log;
 import org.cloudbus.cloudsim.Vm;
 import org.cloudbus.cloudsim.core.CloudSim;
 import org.cloudbus.cloudsim.core.CloudSimTags;
 import org.cloudbus.cloudsim.core.SimEvent;
 
+import de.huberlin.wbi.dcs.DynamicHost;
 import de.huberlin.wbi.dcs.DynamicVm;
 import de.huberlin.wbi.dcs.examples.Parameters;
 import de.huberlin.wbi.dcs.workflow.DataDependency;
@@ -170,6 +172,7 @@ public abstract class AbstractWorkflowScheduler extends DatacenterBroker
 		// determine what kind of task was finished,
 		Task task = (Task) ev.getData();
 		Vm vm = vms.get(task.getVmId());
+		Host host = vm.getHost();
 
 		// if the task finished successfully, cancel its copy and remove them
 		// both from internal data structures
@@ -229,6 +232,10 @@ public abstract class AbstractWorkflowScheduler extends DatacenterBroker
 			// workflow
 			for (DataDependency outgoingEdge : originalTask.getWorkflow()
 					.getGraph().getOutEdges(originalTask)) {
+				if (host instanceof DynamicHost) {
+					DynamicHost dHost = (DynamicHost) host;
+					dHost.addFile(outgoingEdge.getFile());
+				}
 				Task child = originalTask.getWorkflow().getGraph()
 						.getDest(outgoingEdge);
 				child.decNDataDependencies();

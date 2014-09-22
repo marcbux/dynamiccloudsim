@@ -60,7 +60,9 @@ public abstract class LogFileReader {
 
 			List<Task> tasksRequiringThisFile = new ArrayList<Task>();
 			for (long taskId : fileNameToConsumingTaskIds.get(fileName)) {
-				tasksRequiringThisFile.add(taskIdToTask.get(taskId));
+				Task taskRequiringThisFile = taskIdToTask.get(taskId);
+				tasksRequiringThisFile.add(taskRequiringThisFile);
+				taskRequiringThisFile.addInputFile(file);
 			}
 
 			Task taskGeneratingThisFile = taskIdToTask

@@ -23,4 +23,9 @@ public class DataDependency {
 		this.file = file;
 	}
 	
+	@Override
+	public int hashCode() {
+		return getFile().getName().hashCode();
+	}
+	
 }

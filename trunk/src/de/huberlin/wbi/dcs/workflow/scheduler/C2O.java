@@ -29,6 +29,8 @@ public class C2O extends AbstractWorkflowScheduler {
 
 	protected Map<Vm, Map<String, WienerProcessModel>> runtimePerTaskPerVm;
 
+	protected Map<Vm, WienerProcessModel> stageintimePerMBPerVm;
+
 	protected int runId;
 
 	public class Runtime {
@@ -65,6 +67,10 @@ public class C2O extends AbstractWorkflowScheduler {
 		protected Queue<Double> differences;
 		protected double sumOfDifferences;
 		protected Deque<Runtime> estimates;
+
+		public WienerProcessModel(int vmId) {
+			this("", vmId);
+		}
 
 		public WienerProcessModel(String taskName, int vmId) {
 			this.taskName = taskName;
@@ -124,7 +130,6 @@ public class C2O extends AbstractWorkflowScheduler {
 			variance *= timestamp - lastMeasurement.getTimestamp();
 
 			double estimate = lastMeasurement.getRuntime();
-
 			if (variance > 0d) {
 				NormalDistribution nd = new NormalDistribution(
 						lastMeasurement.getRuntime(), Math.sqrt(variance));
@@ -133,9 +138,7 @@ public class C2O extends AbstractWorkflowScheduler {
 			}
 
 			Runtime runtime = new Runtime(timestamp, estimate);
-
 			estimates.add(runtime);
-
 			return Math.pow(Math.E, estimate);
 		}
 	}
@@ -144,6 +147,7 @@ public class C2O extends AbstractWorkflowScheduler {
 		super(name, taskSlotsPerVm);
 		queuePerTask = new HashMap<>();
 		runtimePerTaskPerVm = new HashMap<>();
+		stageintimePerMBPerVm = new HashMap<>();
 		this.runId = runId;
 		Locale loc = new Locale("en");
 		df = (DecimalFormat) NumberFormat.getNumberInstance(loc);
@@ -157,6 +161,8 @@ public class C2O extends AbstractWorkflowScheduler {
 			if (!runtimePerTaskPerVm.containsKey(vm)) {
 				Map<String, WienerProcessModel> runtimePerTask = new HashMap<>();
 				runtimePerTaskPerVm.put(vm, runtimePerTask);
+				stageintimePerMBPerVm.put(vm,
+						new WienerProcessModel(vm.getId()));
 			}
 		}
 		for (Task task : tasks) {
@@ -231,6 +237,8 @@ public class C2O extends AbstractWorkflowScheduler {
 		double runtime = task.getFinishTime() - task.getExecStartTime();
 		runtimePerTaskPerVm.get(vm).get(task.getName())
 				.addRuntime(task.getFinishTime(), runtime);
+		// double stageintimePerMB = 0d;
+		// vm.getCloudletScheduler();
 	}
 
 	@Override
@@ -239,12 +247,17 @@ public class C2O extends AbstractWorkflowScheduler {
 
 	@Override
 	public void terminate() {
-		for (Map<String, WienerProcessModel> m : runtimePerTaskPerVm.values()) {
-			for (WienerProcessModel w : m.values()) {
+		if (printEstimatesVsRuntimes) {
+			for (Map<String, WienerProcessModel> m : runtimePerTaskPerVm
+					.values()) {
+				for (WienerProcessModel w : m.values()) {
+					w.printEstimatesVsRuntimes();
+				}
+			}
+			for (WienerProcessModel w : stageintimePerMBPerVm.values()) {
 				w.printEstimatesVsRuntimes();
 			}
 		}
-
 	}
 
 }

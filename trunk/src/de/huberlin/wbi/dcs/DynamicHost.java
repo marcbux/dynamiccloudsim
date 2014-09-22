@@ -1,8 +1,11 @@
 package de.huberlin.wbi.dcs;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
+import org.cloudbus.cloudsim.File;
 import org.cloudbus.cloudsim.Host;
 import org.cloudbus.cloudsim.Pe;
 import org.cloudbus.cloudsim.Vm;
@@ -25,6 +28,8 @@ public class DynamicHost extends Host {
 	private static long totalMi;
 	private static long totalIo;
 	private static long totalBw;
+	
+	private Set<File> localFiles;
 	
 	public DynamicHost(
 			int id,
@@ -53,6 +58,7 @@ public class DynamicHost extends Host {
 		setPeList(peList);
 		setVmScheduler(new VmSchedulerTimeShared(peList));
 		setFailed(false);
+		localFiles = new HashSet<>();
 	}
 	
 	@Override
@@ -103,6 +109,14 @@ public class DynamicHost extends Host {
 	
 	public void setNumberOfCusPerPe(double numberOfCusPerPe) {
 		this.numberOfCusPerPe = numberOfCusPerPe;
-	}	
+	}
+	
+	public void addFile(File file) {
+		localFiles.add(file);
+	}
+	
+	public boolean containsFile(File file) {
+		return localFiles.contains(file);
+	}
 	
 }

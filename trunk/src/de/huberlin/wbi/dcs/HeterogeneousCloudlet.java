@@ -1,6 +1,10 @@
 package de.huberlin.wbi.dcs;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.cloudbus.cloudsim.Cloudlet;
+import org.cloudbus.cloudsim.File;
 import org.cloudbus.cloudsim.UtilizationModel;
 
 public class HeterogeneousCloudlet extends Cloudlet {
@@ -12,6 +16,8 @@ public class HeterogeneousCloudlet extends Cloudlet {
 	private static long totalMi = 0;
 	private static long totalIo = 0;
 	private static long totalBw = 0;
+	
+	private List<File> inputFiles;
 	
 	public HeterogeneousCloudlet(
 			final int cloudletId,
@@ -34,18 +40,14 @@ public class HeterogeneousCloudlet extends Cloudlet {
 				utilizationModelRam,
 				utilizationModelBw,
 				true);
-		incMi(mi);
+		incMi(mi > 0 ? mi : 1);
 		incIo(io);
 		incBw(bw);
+		inputFiles = new ArrayList<>();
 	}
 	
 	private void updateLength() {
 		setCloudletLength(mi + io + bw);
-	}
-	
-	@Override
-	public long getCloudletTotalLength() {
-		return getCloudletLength();
 	}
 	
 	public long getBw() {
@@ -88,6 +90,14 @@ public class HeterogeneousCloudlet extends Cloudlet {
 	
 	public static long getTotalMi() {
 		return totalMi;
+	}
+	
+	public List<File> getInputFiles() {
+		return inputFiles;
+	}
+	
+	public void addInputFile(File file) {
+		inputFiles.add(file);
 	}
 	
 }

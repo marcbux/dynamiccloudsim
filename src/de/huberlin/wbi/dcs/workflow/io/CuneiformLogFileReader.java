@@ -7,6 +7,7 @@ import java.util.ArrayList;
 
 import org.cloudbus.cloudsim.File;
 import org.cloudbus.cloudsim.ParameterException;
+import org.json.JSONException;
 
 import de.huberlin.wbi.cuneiform.core.semanticmodel.JsonReportEntry;
 import de.huberlin.wbi.dcs.workflow.Task;
@@ -61,6 +62,8 @@ public class CuneiformLogFileReader extends LogFileReader {
 				}
 			}
 		} catch (IOException e1) {
+			e1.printStackTrace();
+		} catch (JSONException e1) {
 			e1.printStackTrace();
 		}
 	}

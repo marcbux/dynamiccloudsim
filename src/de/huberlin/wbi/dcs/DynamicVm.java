@@ -48,7 +48,9 @@ public class DynamicVm extends Vm {
 		this.taskSlots = taskSlots;
 		if (Parameters.outputVmPerformanceLogs) {
 			try {
-				performanceLog = new BufferedWriter(new FileWriter(new File(performanceLogFileName)));
+				File file = new File(performanceLogFileName);
+				file.getParentFile().mkdirs();
+				performanceLog = new BufferedWriter(new FileWriter(file));
 				performanceLog.write("time");
 				String[] resources = {"mips", "iops", "bwps"};
 				for (String resource : resources) {

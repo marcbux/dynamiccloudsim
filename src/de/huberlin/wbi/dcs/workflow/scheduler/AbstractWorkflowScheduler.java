@@ -26,6 +26,8 @@ import de.huberlin.wbi.dcs.workflow.Workflow;
 
 public abstract class AbstractWorkflowScheduler extends DatacenterBroker
 		implements WorkflowScheduler {
+	
+	protected boolean keepReplicatesRunning = false;
 
 	private List<Workflow> workflows;
 	private Map<Integer, Vm> vms;
@@ -280,8 +282,9 @@ public abstract class AbstractWorkflowScheduler extends DatacenterBroker
 
 		if (tasksRemaining()) {
 			submitTasks();
-		} else if (idleTaskSlots.size() == getVmsCreatedList().size()
-				* getTaskSlotsPerVm()) {
+//		} else if (idleTaskSlots.size() == getVmsCreatedList().size()
+//				* getTaskSlotsPerVm()) {
+		} else {
 			Log.printLine(CloudSim.clock() + ": " + getName()
 					+ ": All Tasks executed. Finishing...");
 			terminate();

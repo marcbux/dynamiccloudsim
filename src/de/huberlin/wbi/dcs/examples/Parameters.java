@@ -61,10 +61,10 @@ public class Parameters {
 
 	// experiment parameters
 	public enum Scheduler {
-		STATIC_ROUND_ROBIN, HEFT, JOB_QUEUE, LATE, C3, C2O
+		STATIC_ROUND_ROBIN, HEFT, JOB_QUEUE, LATE, C3, ERA
 	}
 
-	public static Scheduler scheduler = Scheduler.C2O;
+	public static Scheduler scheduler = Scheduler.ERA;
 	public static int numberOfRuns = 1;
 
 	public enum Distribution {

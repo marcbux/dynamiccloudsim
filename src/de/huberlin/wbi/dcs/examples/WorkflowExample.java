@@ -25,8 +25,8 @@ import de.huberlin.wbi.dcs.workflow.io.AlignmentTraceFileReader;
 import de.huberlin.wbi.dcs.workflow.io.CuneiformLogFileReader;
 import de.huberlin.wbi.dcs.workflow.io.DaxFileReader;
 import de.huberlin.wbi.dcs.workflow.io.MontageTraceFileReader;
-import de.huberlin.wbi.dcs.workflow.scheduler.C2O;
 import de.huberlin.wbi.dcs.workflow.scheduler.C3;
+import de.huberlin.wbi.dcs.workflow.scheduler.ERA;
 import de.huberlin.wbi.dcs.workflow.scheduler.GreedyQueueScheduler;
 import de.huberlin.wbi.dcs.workflow.scheduler.HEFTScheduler;
 import de.huberlin.wbi.dcs.workflow.scheduler.LATEScheduler;
@@ -98,8 +98,8 @@ public class WorkflowExample {
 						Parameters.taskSlotsPerVm);
 			case C3:
 				return new C3("C3", Parameters.taskSlotsPerVm);
-			case C2O:
-				return new C2O("C2O", Parameters.taskSlotsPerVm, i);
+			case ERA:
+				return new ERA("ERA", Parameters.taskSlotsPerVm, i);
 			default:
 				return new GreedyQueueScheduler("GreedyQueueScheduler",
 						Parameters.taskSlotsPerVm);

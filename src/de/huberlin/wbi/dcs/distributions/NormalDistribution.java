@@ -28,8 +28,10 @@ public class NormalDistribution implements ContinuousDistribution {
 	/**
 	 * Instantiates a new lognormal distr.
 	 * 
-	 * @param mean the mean
-	 * @param dev the dev
+	 * @param mean
+	 *          the mean
+	 * @param dev
+	 *          the dev
 	 */
 	public NormalDistribution(double mean, double dev) {
 		if (dev <= 0.0) {

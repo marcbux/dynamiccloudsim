@@ -24,9 +24,9 @@ import de.huberlin.wbi.dcs.workflow.Task;
 // currently assumes no data transfer times (similar to CloudSim)
 // and is provided with runtime estimates per VM as if there were only one taskslot per Vm
 public class HEFTScheduler extends StaticRoundRobinScheduler {
-	
+
 	public class TaskUpwardRankComparator implements Comparator<Task> {
-		
+
 		@Override
 		public int compare(Task task1, Task task2) {
 			return Double.compare(upwardRanks.get(task2), upwardRanks.get(task1));
@@ -41,7 +41,7 @@ public class HEFTScheduler extends StaticRoundRobinScheduler {
 	Map<Task, Double> distortedMiPerTask;
 	Map<Task, Double> distortedIoPerTask;
 	Map<Task, Double> distortedBwPerTask;
-	
+
 	Map<Task, Double> upwardRanks;
 
 	public HEFTScheduler(String name, int taskSlotsPerVm) throws Exception {
@@ -76,21 +76,9 @@ public class HEFTScheduler extends StaticRoundRobinScheduler {
 
 		// distort runtime estimates
 		for (Task task : sortedTasks) {
-			distortedMiPerTask.put(
-					task,
-					Math.max(0d, task.getMi() + task.getMi()
-							* Parameters.numGen.nextGaussian()
-							* Parameters.distortionCV));
-			distortedIoPerTask.put(
-					task,
-					Math.max(0d, task.getIo() + task.getIo()
-							* Parameters.numGen.nextGaussian()
-							* Parameters.distortionCV));
-			distortedBwPerTask.put(
-					task,
-					Math.max(0d, task.getBw() + task.getBw()
-							* Parameters.numGen.nextGaussian()
-							* Parameters.distortionCV));
+			distortedMiPerTask.put(task, Math.max(0d, task.getMi() + task.getMi() * numGen.nextGaussian() * Parameters.distortionCV));
+			distortedIoPerTask.put(task, Math.max(0d, task.getIo() + task.getIo() * numGen.nextGaussian() * Parameters.distortionCV));
+			distortedBwPerTask.put(task, Math.max(0d, task.getBw() + task.getBw() * numGen.nextGaussian() * Parameters.distortionCV));
 		}
 
 		// compute upward ranks of all tasks
@@ -98,10 +86,8 @@ public class HEFTScheduler extends StaticRoundRobinScheduler {
 			Task task = sortedTasks.get(i);
 			readyTimePerTask.put(task, 0d);
 			double maxSuccessorRank = 0;
-			for (DataDependency outgoingEdge : task.getWorkflow().getGraph()
-					.getOutEdges(task)) {
-				Task child = task.getWorkflow().getGraph()
-						.getDest(outgoingEdge);
+			for (DataDependency outgoingEdge : task.getWorkflow().getGraph().getOutEdges(task)) {
+				Task child = task.getWorkflow().getGraph().getDest(outgoingEdge);
 				if (upwardRanks.get(child) > maxSuccessorRank) {
 					maxSuccessorRank = upwardRanks.get(child);
 				}
@@ -109,16 +95,14 @@ public class HEFTScheduler extends StaticRoundRobinScheduler {
 
 			double averageComputationCost = 0;
 			for (Vm vm : vms) {
-				double miSeconds = distortedMiPerTask.get(task)
-						/ (vm.getNumberOfPes() * vm.getMips());
+				double miSeconds = distortedMiPerTask.get(task) / (vm.getNumberOfPes() * vm.getMips());
 				double ioSeconds = 0;
 				if (vm instanceof DynamicVm) {
 					DynamicVm dVm = (DynamicVm) vm;
 					ioSeconds = distortedIoPerTask.get(task) / dVm.getIo();
 				}
 				double bwSeconds = distortedBwPerTask.get(task) / vm.getBw();
-				averageComputationCost += Math.max(
-						Math.max(miSeconds, ioSeconds), bwSeconds);
+				averageComputationCost += Math.max(Math.max(miSeconds, ioSeconds), bwSeconds);
 			}
 			averageComputationCost /= vms.size();
 
@@ -139,43 +123,31 @@ public class HEFTScheduler extends StaticRoundRobinScheduler {
 			double bestFinish = Double.MAX_VALUE;
 
 			for (Vm vm : vms) {
-				double miSeconds = distortedMiPerTask.get(task)
-						/ (vm.getNumberOfPes() * vm.getMips());
+				double miSeconds = distortedMiPerTask.get(task) / (vm.getNumberOfPes() * vm.getMips());
 				double ioSeconds = 0;
 				if (vm instanceof DynamicVm) {
 					DynamicVm dVm = (DynamicVm) vm;
-					ioSeconds = distortedIoPerTask.get(task)
-							/ (double) dVm.getIo();
+					ioSeconds = distortedIoPerTask.get(task) / dVm.getIo();
 				}
-				double bwSeconds = distortedBwPerTask.get(task)
-						/ (double) vm.getBw();
-				double computationCost = Math.max(
-						Math.max(miSeconds, ioSeconds), bwSeconds);
+				double bwSeconds = distortedBwPerTask.get(task) / vm.getBw();
+				double computationCost = Math.max(Math.max(miSeconds, ioSeconds), bwSeconds);
 
 				// the readytime of this task will have been set by now, as all
 				// predecessor tasks have a higher upward rank and thus have
 				// been assigned to a vm already
-				TreeSet<Double> freeTimeSlotStarts = freeTimeSlotStartsPerVm
-						.get(vm);
-				Map<Double, Double> freeTimeSlotLengths = freeTimeSlotLengthsPerVm
-						.get(vm);
+				TreeSet<Double> freeTimeSlotStarts = freeTimeSlotStartsPerVm.get(vm);
+				Map<Double, Double> freeTimeSlotLengths = freeTimeSlotLengthsPerVm.get(vm);
 
-				SortedSet<Double> freeTimeSlotStartsAfterReadyTime = (freeTimeSlotStarts
-						.floor(readyTime) != null) ? freeTimeSlotStarts
-						.tailSet(freeTimeSlotStarts.floor(readyTime))
-						: freeTimeSlotStarts.tailSet(freeTimeSlotStarts
-								.ceiling(readyTime));
+				SortedSet<Double> freeTimeSlotStartsAfterReadyTime = (freeTimeSlotStarts.floor(readyTime) != null) ? freeTimeSlotStarts.tailSet(freeTimeSlotStarts
+				    .floor(readyTime)) : freeTimeSlotStarts.tailSet(freeTimeSlotStarts.ceiling(readyTime));
 
 				for (double freeTimeSlotStart : freeTimeSlotStartsAfterReadyTime) {
-					double freeTimeSlotActualStart = Math.max(readyTime,
-							freeTimeSlotStart);
+					double freeTimeSlotActualStart = Math.max(readyTime, freeTimeSlotStart);
 					if (freeTimeSlotActualStart + computationCost > bestFinish)
 						break;
-					double freeTimeSlotLength = freeTimeSlotLengths
-							.get(freeTimeSlotStart);
+					double freeTimeSlotLength = freeTimeSlotLengths.get(freeTimeSlotStart);
 					if (freeTimeSlotActualStart > freeTimeSlotStart)
-						freeTimeSlotLength -= freeTimeSlotActualStart
-								- freeTimeSlotStart;
+						freeTimeSlotLength -= freeTimeSlotActualStart - freeTimeSlotStart;
 					if (computationCost < freeTimeSlotLength) {
 						bestVm = vm;
 						bestVmFreeTimeSlotActualStart = freeTimeSlotActualStart;
@@ -184,44 +156,40 @@ public class HEFTScheduler extends StaticRoundRobinScheduler {
 				}
 			}
 
-			// assign task to vm
-			schedule.put(task, bestVm);
-			Log.printLine(CloudSim.clock() + ": " + getName()
-					+ ": Assigning Task # " + task.getCloudletId() + " \""
-					+ task.getName() + " " + task.getParams() + " \""
-					+ " to VM # " + bestVm.getId());
+			if (bestVm != null) {
 
-			// update readytime of all successor tasks
-			for (DataDependency outgoingEdge : task.getWorkflow().getGraph()
-					.getOutEdges(task)) {
-				Task child = task.getWorkflow().getGraph()
-						.getDest(outgoingEdge);
-				if (bestFinish > readyTimePerTask.get(child)) {
-					readyTimePerTask.put(child, bestFinish);
+				// assign task to vm
+				schedule.put(task, bestVm);
+				Log.printLine(CloudSim.clock() + ": " + getName() + ": Assigning Task # " + task.getCloudletId() + " \"" + task.getName() + " " + task.getParams()
+				    + " \"" + " to VM # " + bestVm.getId());
+
+				// update readytime of all successor tasks
+				for (DataDependency outgoingEdge : task.getWorkflow().getGraph().getOutEdges(task)) {
+					Task child = task.getWorkflow().getGraph().getDest(outgoingEdge);
+					if (bestFinish > readyTimePerTask.get(child)) {
+						readyTimePerTask.put(child, bestFinish);
+					}
 				}
-			}
 
-			double timeslotStart = freeTimeSlotStartsPerVm.get(bestVm).floor(
-					bestVmFreeTimeSlotActualStart);
-			double timeslotLength = freeTimeSlotLengthsPerVm.get(bestVm).get(
-					timeslotStart);
-			double diff = bestVmFreeTimeSlotActualStart - timeslotStart;
-			// add time slots before and after
-			if (bestVmFreeTimeSlotActualStart > timeslotStart) {
-				freeTimeSlotLengthsPerVm.get(bestVm).put(timeslotStart, diff);
-			} else {
-				freeTimeSlotStartsPerVm.get(bestVm).remove(timeslotStart);
-				freeTimeSlotLengthsPerVm.get(bestVm).remove(timeslotStart);
-			}
+				double timeslotStart = freeTimeSlotStartsPerVm.get(bestVm).floor(bestVmFreeTimeSlotActualStart);
+				double timeslotLength = freeTimeSlotLengthsPerVm.get(bestVm).get(timeslotStart);
+				double diff = bestVmFreeTimeSlotActualStart - timeslotStart;
+				// add time slots before and after
+				if (bestVmFreeTimeSlotActualStart > timeslotStart) {
+					freeTimeSlotLengthsPerVm.get(bestVm).put(timeslotStart, diff);
+				} else {
+					freeTimeSlotStartsPerVm.get(bestVm).remove(timeslotStart);
+					freeTimeSlotLengthsPerVm.get(bestVm).remove(timeslotStart);
+				}
 
-			double computationCost = bestFinish - bestVmFreeTimeSlotActualStart;
-			double actualTimeSlotLength = timeslotLength - diff;
-			if (computationCost < actualTimeSlotLength) {
-				freeTimeSlotStartsPerVm.get(bestVm).add(bestFinish);
-				freeTimeSlotLengthsPerVm.get(bestVm).put(bestFinish,
-						actualTimeSlotLength - computationCost);
-			}
+				double computationCost = bestFinish - bestVmFreeTimeSlotActualStart;
+				double actualTimeSlotLength = timeslotLength - diff;
+				if (computationCost < actualTimeSlotLength) {
+					freeTimeSlotStartsPerVm.get(bestVm).add(bestFinish);
+					freeTimeSlotLengthsPerVm.get(bestVm).put(bestFinish, actualTimeSlotLength - computationCost);
+				}
 
+			}
 		}
 
 	}

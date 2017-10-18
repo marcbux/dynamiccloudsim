@@ -15,7 +15,7 @@ public class PredicateTime extends Predicate {
 
 	private final double time;
 	private final double epsilon;
-	
+
 	public PredicateTime(double time, double epsilon) {
 		this.time = time;
 		this.epsilon = epsilon;

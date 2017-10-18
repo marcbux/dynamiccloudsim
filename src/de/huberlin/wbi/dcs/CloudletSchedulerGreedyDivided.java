@@ -34,11 +34,11 @@ public class CloudletSchedulerGreedyDivided extends CloudletSchedulerTimeShared 
 
 	public CloudletSchedulerGreedyDivided() {
 		super();
-		cloudletIdToTaskSlot = new HashMap<Integer, Integer>();
-		occupiedTaskSlots = new HashSet<Integer>();
-		mips = new ArrayList<Double>(0);
-		iops = new ArrayList<Double>(0);
-		bwps = new ArrayList<Double>(0);
+		cloudletIdToTaskSlot = new HashMap<>();
+		occupiedTaskSlots = new HashSet<>();
+		mips = new ArrayList<>(0);
+		iops = new ArrayList<>(0);
+		bwps = new ArrayList<>(0);
 		mips.add(0d);
 		iops.add(0d);
 		bwps.add(0d);
@@ -56,20 +56,17 @@ public class CloudletSchedulerGreedyDivided extends CloudletSchedulerTimeShared 
 		computeAvailableResources(mipsShare);
 
 		// (1) update computation of all Cloudlets running on this VM
-		List<ResCloudlet> toRemove = new ArrayList<ResCloudlet>();
+		List<ResCloudlet> toRemove = new ArrayList<>();
 		double nextEvent = Double.MAX_VALUE;
 		for (ResCloudlet rcl : getCloudletExecList()) {
 			double estimatedFinishTime = Double.MAX_VALUE;
 			double assignedMips = assignResources(rcl);
 
 			rcl.updateCloudletFinishedSoFar((long) (assignedMips * timeSpan * 1000000));
-			rcl.getCloudlet().setCloudletFinishedSoFar(
-					rcl.getCloudlet().getCloudletTotalLength()
-							- rcl.getRemainingCloudletLength());
+			rcl.getCloudlet().setCloudletFinishedSoFar(rcl.getCloudlet().getCloudletTotalLength() - rcl.getRemainingCloudletLength());
 
 			if (assignedMips > 0) {
-				estimatedFinishTime = currentTime
-						+ rcl.getRemainingCloudletLength() / assignedMips;
+				estimatedFinishTime = currentTime + rcl.getRemainingCloudletLength() / assignedMips;
 			}
 			if (estimatedFinishTime - currentTime < 0.1) {
 				estimatedFinishTime = currentTime + 0.1;
@@ -120,8 +117,7 @@ public class CloudletSchedulerGreedyDivided extends CloudletSchedulerTimeShared 
 		// (3) update VM performance (involves removal of next event in the
 		// future queue previously scheduled by this scheduler)
 		if (vm != null) {
-			vm.getHost().getDatacenter()
-					.cancelEvent(new PredicateTime(nextEvent, 0.001));
+			vm.getHost().getDatacenter().cancelEvent(new PredicateTime(nextEvent, 0.001));
 		}
 		vm.updatePerformanceCoefficients();
 		computeAvailableResources(mipsShare);
@@ -135,8 +131,7 @@ public class CloudletSchedulerGreedyDivided extends CloudletSchedulerTimeShared 
 			double assignedMips = assignResources(rcl);
 
 			if (assignedMips > 0) {
-				estimatedFinishTime = currentTime
-						+ rcl.getRemainingCloudletLength() / assignedMips;
+				estimatedFinishTime = currentTime + rcl.getRemainingCloudletLength() / assignedMips;
 			}
 			if (estimatedFinishTime - currentTime < 0.1) {
 				estimatedFinishTime = currentTime + 0.1;
@@ -167,9 +162,8 @@ public class CloudletSchedulerGreedyDivided extends CloudletSchedulerTimeShared 
 	}
 
 	private void dumpCurrentResourceAssignmentsToLog(double currentTime) {
-		BufferedWriter log = vm.getPerformanceLog();
-		if (!(mips.size() <= vm.getTaskSlots())) {
-			try {
+		try (BufferedWriter log = vm.getPerformanceLog()) {
+			if (!(mips.size() <= vm.getTaskSlots())) {
 				log.write(Double.toString(currentTime / 60));
 				// log.write(Double.toString(currentTime));
 				for (int i = mips.size() - 1; i >= 0; i--) {
@@ -182,9 +176,9 @@ public class CloudletSchedulerGreedyDivided extends CloudletSchedulerTimeShared 
 					log.write("," + bwps.get(i));
 				}
 				log.write("\n");
-			} catch (IOException e) {
-				e.printStackTrace();
 			}
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -240,8 +234,7 @@ public class CloudletSchedulerGreedyDivided extends CloudletSchedulerTimeShared 
 		int taskSlot = cloudletIdToTaskSlot.get(rcl.getCloudletId());
 
 		if (totalMi > 0 && miSeconds >= Math.max(ioSeconds, bwSeconds)) {
-			mips.set(taskSlot,
-					Math.min(mips.get(0), rcl.getNumberOfPes() * miPerVMPe));
+			mips.set(taskSlot, Math.min(mips.get(0), rcl.getNumberOfPes() * miPerVMPe));
 			iops.set(taskSlot, totalIo * mips.get(0) / totalMi);
 			bwps.set(taskSlot, totalBw * mips.get(0) / totalMi);
 		} else if (totalIo > 0 && ioSeconds >= Math.max(miSeconds, bwSeconds)) {
@@ -264,9 +257,9 @@ public class CloudletSchedulerGreedyDivided extends CloudletSchedulerTimeShared 
 	private double getTotalMips(List<Double> mipsShare) {
 		double capacity = 0.0;
 		int cpus = 0;
-		for (Double mips : mipsShare) {
-			capacity += mips;
-			if (mips > 0.0) {
+		for (Double mips_ : mipsShare) {
+			capacity += mips_;
+			if (mips_ > 0.0) {
 				cpus++;
 			}
 		}
@@ -298,8 +291,7 @@ public class CloudletSchedulerGreedyDivided extends CloudletSchedulerTimeShared 
 			double assignedResources = assignResources(rgl);
 
 			if (assignedResources > 0) {
-				estimatedFinishTime = CloudSim.clock()
-						+ rgl.getRemainingCloudletLength() / assignedResources;
+				estimatedFinishTime = CloudSim.clock() + rgl.getRemainingCloudletLength() / assignedResources;
 			}
 
 			return estimatedFinishTime;
@@ -310,9 +302,8 @@ public class CloudletSchedulerGreedyDivided extends CloudletSchedulerTimeShared 
 
 	@Override
 	public double cloudletSubmit(Cloudlet cloudlet, double fileTransferTime) {
-		ResCloudlet rcl = (cloudlet instanceof HeterogeneousCloudlet) ? new ResHeterogeneousCloudlet(
-				(HeterogeneousCloudlet) cloudlet, vm) : new ResCloudlet(
-				cloudlet);
+		ResCloudlet rcl = (cloudlet instanceof HeterogeneousCloudlet) ? new ResHeterogeneousCloudlet((HeterogeneousCloudlet) cloudlet, vm) : new ResCloudlet(
+		    cloudlet);
 
 		rcl.setCloudletStatus(Cloudlet.INEXEC);
 		for (int i = 0; i < cloudlet.getNumberOfPes(); i++) {
@@ -346,8 +337,7 @@ public class CloudletSchedulerGreedyDivided extends CloudletSchedulerTimeShared 
 	}
 
 	@Override
-	public double getTotalCurrentAvailableMipsForCloudlet(ResCloudlet rcl,
-			List<Double> mipsShare) {
+	public double getTotalCurrentAvailableMipsForCloudlet(ResCloudlet rcl, List<Double> mipsShare) {
 		double availableMiTemp = mips.get(0);
 		double availableIoTemp = iops.get(0);
 		double availableBwTemp = bwps.get(0);

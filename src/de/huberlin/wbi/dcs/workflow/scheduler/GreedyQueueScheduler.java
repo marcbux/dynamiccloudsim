@@ -17,8 +17,7 @@ public class GreedyQueueScheduler extends AbstractWorkflowScheduler {
 
 	protected Queue<Task> taskQueue;
 
-	public GreedyQueueScheduler(String name, int taskSlotsPerVm)
-			throws Exception {
+	public GreedyQueueScheduler(String name, int taskSlotsPerVm) throws Exception {
 		super(name, taskSlotsPerVm);
 		taskQueue = new LinkedList<>();
 	}

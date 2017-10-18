@@ -16,8 +16,16 @@ import de.huberlin.wbi.dcs.distributions.NormalDistribution;
 
 public class Parameters {
 
-	public static boolean considerDataLocality = false;
+	public static long seed = 3;
+	public static Scheduler scheduler = Scheduler.ERA;
+	public static int numberOfRuns = 1;
+
+	public enum Scheduler {
+		STATIC_ROUND_ROBIN, HEFT, JOB_QUEUE, LATE, C3, ERA
+	}
 	
+	public static boolean considerDataLocality = false;
+
 	// datacenter params
 	// Kb / s
 	public static long bwpsPerPe = 256;
@@ -40,7 +48,7 @@ public class Parameters {
 	public static int mipsPerCoreXeonE5430 = 355;
 
 	// vm params
-	public static int nVms = 8;
+	public static int nVms = 2;
 	public static int taskSlotsPerVm = 1;
 
 	public static double numberOfCusPerPe = 1;
@@ -57,16 +65,8 @@ public class Parameters {
 	public static boolean outputWorkflowGraph = false;
 	public static boolean outputVmPerformanceLogs = false;
 
-	// public enum LogParser
 
 	// experiment parameters
-	public enum Scheduler {
-		STATIC_ROUND_ROBIN, HEFT, JOB_QUEUE, LATE, C3, ERA
-	}
-
-	public static Scheduler scheduler = Scheduler.ERA;
-	public static int numberOfRuns = 1;
-
 	public enum Distribution {
 		EXPONENTIAL, GAMMA, LOGNORMAL, LOMAX, NORMAL, PARETO, UNIFORM, WEIBULL, ZIPF
 	}
@@ -196,13 +196,10 @@ public class Parameters {
 	// e.g., Task progress scores, HEFT runtime estimates
 	public static double distortionCV = 0d;
 
-	public static long seed = 0;
 	public static Random numGen = new Random(seed);
 
-	public static ContinuousDistribution getDistribution(
-			Distribution distribution, double mean, int alpha, double beta,
-			double dev, double shape, double location, double shift,
-			double min, double max, int population) {
+	public static ContinuousDistribution getDistribution(Distribution distribution, double mean, int alpha, double beta, double dev, double shape,
+	    double location, double shift, double min, double max, int population) {
 		ContinuousDistribution dist = null;
 		switch (distribution) {
 		case EXPONENTIAL:
@@ -232,6 +229,7 @@ public class Parameters {
 		case ZIPF:
 			dist = new ZipfDistr(shape, population);
 			break;
+		default:
 		}
 		return dist;
 	}
@@ -249,8 +247,7 @@ public class Parameters {
 				numberOfRuns = Integer.valueOf(args[++i]);
 			}
 			if (args[i].compareTo("-" + "heterogeneityCV") == 0) {
-				cpuHeterogeneityCV = ioHeterogeneityCV = bwHeterogeneityCV = Double
-						.valueOf(args[++i]);
+				cpuHeterogeneityCV = ioHeterogeneityCV = bwHeterogeneityCV = Double.valueOf(args[++i]);
 			}
 			if (args[i].compareTo("-" + "cpuHeterogeneityCV") == 0) {
 				cpuHeterogeneityCV = Double.valueOf(args[++i]);
@@ -262,12 +259,10 @@ public class Parameters {
 				bwHeterogeneityCV = Double.valueOf(args[++i]);
 			}
 			if (args[i].compareTo("-" + "baselineChangesPerHour") == 0) {
-				cpuBaselineChangesPerHour = ioBaselineChangesPerHour = bwBaselineChangesPerHour = Double
-						.valueOf(args[++i]);
+				cpuBaselineChangesPerHour = ioBaselineChangesPerHour = bwBaselineChangesPerHour = Double.valueOf(args[++i]);
 			}
 			if (args[i].compareTo("-" + "baselineCV") == 0) {
-				cpuDynamicsCV = ioDynamicsCV = bwDynamicsCV = Double
-						.valueOf(args[++i]);
+				cpuDynamicsCV = ioDynamicsCV = bwDynamicsCV = Double.valueOf(args[++i]);
 			}
 			if (args[i].compareTo("-" + "cpuDynamicsCV") == 0) {
 				cpuDynamicsCV = Double.valueOf(args[++i]);

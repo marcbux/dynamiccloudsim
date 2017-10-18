@@ -7,8 +7,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import org.cloudbus.cloudsim.ParameterException;
-import org.cloudbus.cloudsim.UtilizationModel;
-import org.cloudbus.cloudsim.UtilizationModelFull;
 
 import de.huberlin.wbi.dcs.workflow.Task;
 import de.huberlin.wbi.dcs.workflow.Workflow;
@@ -16,15 +14,11 @@ import de.huberlin.wbi.dcs.workflow.Workflow;
 public class AlignmentTraceFileReader extends LogFileReader {
 
 	@Override
-	protected void fillDataStructures(int userId, String filePath,
-			boolean fileNames, boolean kernelTime, Workflow workflow) {
-		try {
-			BufferedReader logfile = new BufferedReader(
-					new FileReader(filePath));
+	protected void fillDataStructures(int userId, String filePath, boolean fileNames, boolean kernelTime, Workflow workflow) {
+		try (BufferedReader logfile = new BufferedReader(new FileReader(filePath))) {
 
 			String line = logfile.readLine();
 			String[] splitLine;
-			UtilizationModel utilizationModel = new UtilizationModelFull();
 			while (line != null) {
 				splitLine = line.split("\t");
 				String name = splitLine[2];
@@ -37,21 +31,16 @@ public class AlignmentTraceFileReader extends LogFileReader {
 					splitLine = line.split("\t");
 					String fileName = splitLine[5];
 					if (fileNames) {
-						fileName = fileName.substring(Math.max(0,
-								fileName.lastIndexOf('/') + 1));
+						fileName = fileName.substring(Math.max(0, fileName.lastIndexOf('/') + 1));
 					}
 					int fileSize = Integer.parseInt(splitLine[4]) / 1024;
 					fileSize = (fileSize > 0) ? fileSize : 1;
 
 					if (!fileNameToFile.containsKey(fileName)) {
-						fileNameToFile.put(fileName,
-								new org.cloudbus.cloudsim.File(fileName,
-										fileSize));
-						fileNameToConsumingTaskIds.put(fileName,
-								new ArrayList<Long>());
+						fileNameToFile.put(fileName, new org.cloudbus.cloudsim.File(fileName, fileSize));
+						fileNameToConsumingTaskIds.put(fileName, new ArrayList<Long>());
 					}
-					fileNameToConsumingTaskIds.get(fileName).add(
-							(long) cloudletId);
+					fileNameToConsumingTaskIds.get(fileName).add((long) cloudletId);
 					inputSize += fileSize;
 				} while ((line = logfile.readLine()).contains("input-file"));
 
@@ -62,32 +51,25 @@ public class AlignmentTraceFileReader extends LogFileReader {
 					}
 				}
 
-				while ((line = logfile.readLine()) != null
-						&& line.contains("output-file")) {
+				while ((line = logfile.readLine()) != null && line.contains("output-file")) {
 					splitLine = line.split("\t");
 					String fileName = splitLine[5];
 					if (fileNames) {
-						fileName = fileName.substring(Math.max(0,
-								fileName.lastIndexOf('/') + 1));
+						fileName = fileName.substring(Math.max(0, fileName.lastIndexOf('/') + 1));
 					}
 					int fileSize = Integer.parseInt(splitLine[4]) / 1024;
 					fileSize = (fileSize > 0) ? fileSize : 1;
 
 					if (!fileNameToFile.containsKey(fileName)) {
-						fileNameToFile.put(fileName,
-								new org.cloudbus.cloudsim.File(fileName,
-										fileSize));
-						fileNameToConsumingTaskIds.put(fileName,
-								new ArrayList<Long>());
+						fileNameToFile.put(fileName, new org.cloudbus.cloudsim.File(fileName, fileSize));
+						fileNameToConsumingTaskIds.put(fileName, new ArrayList<Long>());
 					}
 					fileNameToProducingTaskId.put(fileName, (long) cloudletId);
 					outputSize += fileSize;
 				}
 
-				Task task = new Task(name, params, workflow, userId,
-						cloudletId, timeInMs, (inputSize + outputSize), 0, 1,
-						inputSize, outputSize, utilizationModel,
-						utilizationModel, utilizationModel);
+				Task task = new Task(name, params, workflow, userId, cloudletId, timeInMs, (inputSize + outputSize), 0, 1, inputSize, outputSize, utilizationModel,
+				    utilizationModel, utilizationModel);
 				taskIdToTask.put((long) cloudletId, task);
 				cloudletId++;
 			}

@@ -8,8 +8,6 @@ import java.util.Set;
 
 import org.cloudbus.cloudsim.File;
 import org.cloudbus.cloudsim.ParameterException;
-import org.cloudbus.cloudsim.UtilizationModel;
-import org.cloudbus.cloudsim.UtilizationModelFull;
 
 import de.huberlin.wbi.dcs.workflow.Task;
 import de.huberlin.wbi.dcs.workflow.Workflow;
@@ -28,35 +26,28 @@ import edu.isi.pegasus.planner.parser.dax.DAXParser;
 public class DaxFileReader extends LogFileReader {
 
 	@Override
-	protected void fillDataStructures(int userId, String filePath,
-			boolean fileNames, boolean kernelTime, Workflow workflow) {
+	protected void fillDataStructures(int userId, String filePath, boolean fileNames, boolean kernelTime, Workflow workflow) {
 		try {
 			Set<String> tasks = new HashSet<>();
 
-			PegasusProperties properties = PegasusProperties
-					.nonSingletonInstance();
+			PegasusProperties properties = PegasusProperties.nonSingletonInstance();
 			PegasusBag bag = new PegasusBag();
 			bag.add(PegasusBag.PEGASUS_PROPERTIES, properties);
 
-			LogManager logger = LogManagerFactory
-					.loadSingletonInstance(properties);
+			LogManager logger = LogManagerFactory.loadSingletonInstance(properties);
 			logger.logEventStart("DaxWorkflow", "", "");
 			logger.setLevel(2);
 
 			bag.add(PegasusBag.PEGASUS_LOGMANAGER, logger);
 
-			DAXParser daxParser = DAXParserFactory.loadDAXParser(bag,
-					"DAX2CDAG", filePath);
+			DAXParser daxParser = DAXParserFactory.loadDAXParser(bag, "DAX2CDAG", filePath);
 			((Parser) daxParser).startParser(filePath);
-			ADag dag = (ADag) ((DAX2CDAG) daxParser.getDAXCallback())
-					.getConstructedObject();
+			ADag dag = (ADag) ((DAX2CDAG) daxParser.getDAXCallback()).getConstructedObject();
 
 			Queue<String> jobQueue = new LinkedList<>();
 			for (Object rootNode : dag.getRootNodes()) {
 				jobQueue.add((String) rootNode);
 			}
-
-			UtilizationModel utilizationModel = new UtilizationModelFull();
 
 			while (!jobQueue.isEmpty()) {
 				String jobId = jobQueue.remove();
@@ -81,11 +72,9 @@ public class DaxFileReader extends LogFileReader {
 						inputSize += size;
 						if (!fileNameToFile.containsKey(name)) {
 							fileNameToFile.put(name, new File(name, size));
-							fileNameToConsumingTaskIds.put(name,
-									new ArrayList<Long>());
+							fileNameToConsumingTaskIds.put(name, new ArrayList<Long>());
 						}
-						fileNameToConsumingTaskIds.get(name).add(
-								(long) cloudletId);
+						fileNameToConsumingTaskIds.get(name).add((long) cloudletId);
 					}
 				}
 
@@ -97,8 +86,7 @@ public class DaxFileReader extends LogFileReader {
 						outputSize += size;
 						if (!fileNameToFile.containsKey(name)) {
 							fileNameToFile.put(name, new File(name, size));
-							fileNameToConsumingTaskIds.put(name,
-									new ArrayList<Long>());
+							fileNameToConsumingTaskIds.put(name, new ArrayList<Long>());
 						}
 						fileNameToProducingTaskId.put(name, (long) cloudletId);
 					}
@@ -106,19 +94,16 @@ public class DaxFileReader extends LogFileReader {
 
 				for (Object child : dag.getChildren(jobId)) {
 					String childId = (String) child;
-					if (!tasks.contains(childId)
-							&& tasks.containsAll(dag.getParents(childId)))
+					if (!tasks.contains(childId) && tasks.containsAll(dag.getParents(childId)))
 						jobQueue.add(childId);
 				}
 
 				long ioLength = (inputSize + outputSize) / 1024;
 
-				Task task = new Task(taskName, params, workflow, userId,
-						(int) cloudletId, cloudletLength, ioLength, bwLength,
-						pesNumber, inputSize, outputSize, utilizationModel,
-						utilizationModel, utilizationModel);
+				Task task = new Task(taskName, params, workflow, userId, cloudletId, cloudletLength, ioLength, bwLength, pesNumber, inputSize, outputSize,
+				    utilizationModel, utilizationModel, utilizationModel);
 
-				taskIdToTask.put((long)cloudletId, task);
+				taskIdToTask.put((long) cloudletId, task);
 				cloudletId++;
 			}
 

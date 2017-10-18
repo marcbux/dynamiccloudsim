@@ -26,8 +26,7 @@ public class StaticRoundRobinScheduler extends AbstractWorkflowScheduler {
 	protected Map<Vm, Queue<Task>> readyTasks;
 	private Iterator<Vm> vmIt;
 
-	public StaticRoundRobinScheduler(String name, int taskSlotsPerVm)
-			throws Exception {
+	public StaticRoundRobinScheduler(String name, int taskSlotsPerVm) throws Exception {
 		super(name, taskSlotsPerVm);
 		schedule = new HashMap<>();
 		readyTasks = new HashMap<>();
@@ -61,10 +60,8 @@ public class StaticRoundRobinScheduler extends AbstractWorkflowScheduler {
 			}
 			Vm vm = vmIt.next();
 			schedule.put(task, vm);
-			Log.printLine(CloudSim.clock() + ": " + getName()
-					+ ": Assigning Task # " + task.getCloudletId() + " \""
-					+ task.getName() + " " + task.getParams() + " \""
-					+ " to VM # " + vm.getId());
+			Log.printLine(CloudSim.clock() + ": " + getName() + ": Assigning Task # " + task.getCloudletId() + " \"" + task.getName() + " " + task.getParams()
+			    + " \"" + " to VM # " + vm.getId());
 		}
 	}
 

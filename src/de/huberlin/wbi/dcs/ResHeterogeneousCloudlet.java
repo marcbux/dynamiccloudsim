@@ -22,10 +22,9 @@ public class ResHeterogeneousCloudlet extends ResCloudlet {
 
 	public void setLocalIo(double localIo) {
 		this.localIo = localIo;
-		lengthCoeff = (cloudlet.getCloudletTotalLength() - localIo)
-				/ cloudlet.getCloudletTotalLength();
+		lengthCoeff = (cloudlet.getCloudletTotalLength() - localIo) / cloudlet.getCloudletTotalLength();
 	}
-	
+
 	public void setLocalIo() {
 		Host host = vm.getHost();
 		long local = 0, global = 0;
@@ -52,28 +51,21 @@ public class ResHeterogeneousCloudlet extends ResCloudlet {
 
 	@Override
 	public long getCloudletLength() {
-		return (Parameters.considerDataLocality) ? Math.max(0,
-				(long) (super.getCloudletLength() * lengthCoeff)) : super
-				.getCloudletLength();
+		return (Parameters.considerDataLocality) ? Math.max(0, (long) (super.getCloudletLength() * lengthCoeff)) : super.getCloudletLength();
 	}
 
 	@Override
 	public long getCloudletTotalLength() {
-		return (Parameters.considerDataLocality) ? Math.max(0,
-				(long) (super.getRemainingCloudletLength() * lengthCoeff))
-				: super.getRemainingCloudletLength();
+		return (Parameters.considerDataLocality) ? Math.max(0, (long) (super.getRemainingCloudletLength() * lengthCoeff)) : super.getRemainingCloudletLength();
 	}
 
 	@Override
 	public long getRemainingCloudletLength() {
-		return (Parameters.considerDataLocality) ? Math.max(0,
-				(long) (super.getRemainingCloudletLength() * lengthCoeff))
-				: super.getRemainingCloudletLength();
+		return (Parameters.considerDataLocality) ? Math.max(0, (long) (super.getRemainingCloudletLength() * lengthCoeff)) : super.getRemainingCloudletLength();
 	}
 
 	@Override
 	public void updateCloudletFinishedSoFar(long miLength) {
-		super.updateCloudletFinishedSoFar((Parameters.considerDataLocality) ? (long) (miLength / lengthCoeff)
-				: miLength);
+		super.updateCloudletFinishedSoFar((Parameters.considerDataLocality) ? (long) (miLength / lengthCoeff) : miLength);
 	}
 }

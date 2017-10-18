@@ -16,42 +16,27 @@ import org.cloudbus.cloudsim.provisioners.RamProvisionerSimple;
 import de.huberlin.wbi.dcs.provisioners.BwProvisionerFull;
 
 public class DynamicHost extends Host {
-	
+
 	/** The I/O capacity of this host (in byte per second). */
 	private long io;
-	
+
 	/** The amount of compute units this host provides per Pe. */
 	private double numberOfCusPerPe;
-	
+
 	private double mipsPerPe;
-	
+
 	private static long totalMi;
 	private static long totalIo;
 	private static long totalBw;
-	
+
 	private Set<File> localFiles;
-	
-	public DynamicHost(
-			int id,
-			int ram,
-			long bandwidth,
-			long io,
-			long storage,
-			double numberOfCusPerPe,
-			int numberOfPes,
-			double mipsPerPe) {	
-		super(
-				id,
-				new RamProvisionerSimple(ram),
-				new BwProvisionerFull(bandwidth),
-				storage,
-				new ArrayList<Pe>(),
-				null
-		);
+
+	public DynamicHost(int id, int ram, long bandwidth, long io, long storage, double numberOfCusPerPe, int numberOfPes, double mipsPerPe) {
+		super(id, new RamProvisionerSimple(ram), new BwProvisionerFull(bandwidth), storage, new ArrayList<Pe>(), null);
 		setIo(io);
 		setMipsPerPe(mipsPerPe);
 		setNumberOfCusPerPe(numberOfCusPerPe);
-		List<Pe> peList = new ArrayList<Pe>();
+		List<Pe> peList = new ArrayList<>();
 		for (int i = 0; i < numberOfPes; i++) {
 			peList.add(new Pe(i, new PeProvisionerSimple(mipsPerPe)));
 		}
@@ -60,11 +45,11 @@ public class DynamicHost extends Host {
 		setFailed(false);
 		localFiles = new HashSet<>();
 	}
-	
+
 	@Override
 	public boolean vmCreate(Vm vm) {
 		if (vm instanceof DynamicVm) {
-			DynamicVm dVm = (DynamicVm)vm;
+			DynamicVm dVm = (DynamicVm) vm;
 			dVm.setMips((dVm.getNumberOfCusPerPe() / getNumberOfCusPerPe()) * getMipsPerPe());
 			dVm.setBw(getBw());
 			dVm.setIo(getIo());
@@ -78,11 +63,11 @@ public class DynamicHost extends Host {
 	public static long getTotalBw() {
 		return totalBw;
 	}
-	
+
 	public static long getTotalIo() {
 		return totalIo;
 	}
-	
+
 	public static long getTotalMi() {
 		return totalMi;
 	}
@@ -90,33 +75,33 @@ public class DynamicHost extends Host {
 	public long getIo() {
 		return io;
 	}
-	
+
 	public double getMipsPerPe() {
 		return mipsPerPe;
 	}
-	
+
 	public double getNumberOfCusPerPe() {
 		return numberOfCusPerPe;
 	}
-	
+
 	public void setIo(long io) {
 		this.io = io;
 	}
-	
+
 	public void setMipsPerPe(double mipsPerPe) {
 		this.mipsPerPe = mipsPerPe;
 	}
-	
+
 	public void setNumberOfCusPerPe(double numberOfCusPerPe) {
 		this.numberOfCusPerPe = numberOfCusPerPe;
 	}
-	
+
 	public void addFile(File file) {
 		localFiles.add(file);
 	}
-	
+
 	public boolean containsFile(File file) {
 		return localFiles.contains(file);
 	}
-	
+
 }

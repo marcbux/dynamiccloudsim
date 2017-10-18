@@ -14,19 +14,17 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
-import java.util.Random;
 import java.util.Set;
 
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.cloudbus.cloudsim.Vm;
 import org.cloudbus.cloudsim.core.CloudSim;
 
-import de.huberlin.wbi.dcs.examples.Parameters;
 import de.huberlin.wbi.dcs.workflow.Task;
 
 public class ERA extends AbstractWorkflowScheduler {
 
-	protected final double alpha = 0.01;
+	protected final double alpha = 0.05;
 	protected final double rho = 0.1;
 
 	public static boolean printEstimatesVsRuntimes = true;
@@ -34,13 +32,12 @@ public class ERA extends AbstractWorkflowScheduler {
 
 	protected DecimalFormat df;
 	protected int runId;
-	Random numGen;
 
 	protected Map<String, Queue<Task>> readyTasksPerBot;
 	protected Map<String, Set<Task>> runningTasksPerBot;
 	protected Map<Vm, Map<String, Set<Task>>> runningTasksPerBotPerVm;
 	protected Map<Vm, Map<String, WienerProcessModel>> runtimePerBotPerVm;
-	
+
 	protected Set<Task> todo;
 
 	public class Runtime {
@@ -67,10 +64,6 @@ public class ERA extends AbstractWorkflowScheduler {
 		protected double sumOfDifferences;
 		protected Deque<Runtime> estimates;
 
-		public WienerProcessModel(int vmId) {
-			this("", vmId);
-		}
-
 		public WienerProcessModel(String botName, int vmId) {
 			this.botName = botName;
 			this.vmId = vmId;
@@ -84,12 +77,10 @@ public class ERA extends AbstractWorkflowScheduler {
 			try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename))) {
 				writer.write("time;estimate;measurement\n");
 				for (Runtime measurement : measurements) {
-					double m = logarithmize ? Math.pow(Math.E, measurement.runtime) : measurement.runtime;
-					writer.write(df.format(measurement.timestamp / 60) + ";;" + df.format(m / 60) + "\n");
+					writer.write(df.format(measurement.timestamp / 60) + ";;" + df.format(measurement.runtime / 60) + "\n");
 				}
 				for (Runtime estimate : estimates) {
-					double e = logarithmize ? Math.pow(Math.E, estimate.runtime) : estimate.runtime;
-					writer.write(df.format(estimate.timestamp / 60) + ";" + df.format(e / 60) + ";\n");
+					writer.write(df.format(estimate.timestamp / 60) + ";" + df.format(estimate.runtime / 60) + ";\n");
 				}
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -97,13 +88,10 @@ public class ERA extends AbstractWorkflowScheduler {
 		}
 
 		public void addRuntime(double timestamp, double runtime) {
-			if (runtime < 0) {
-				System.out.println("help");
-			}
 			Runtime measurement = new Runtime(timestamp, logarithmize ? Math.log(runtime) : runtime);
 			if (!measurements.isEmpty()) {
 				Runtime lastMeasurement = measurements.getLast();
-				double difference = (measurement.runtime - lastMeasurement.runtime) / Math.sqrt((measurement.timestamp - lastMeasurement.timestamp));
+				double difference = (measurement.runtime - lastMeasurement.runtime) / Math.sqrt(measurement.timestamp - lastMeasurement.timestamp);
 				sumOfDifferences += difference;
 				differences.add(difference);
 			}
@@ -132,11 +120,13 @@ public class ERA extends AbstractWorkflowScheduler {
 				estimate = nd.inverseCumulativeProbability(alpha);
 			}
 
+			estimate = logarithmize ? Math.pow(Math.E, estimate) : Math.max(estimate, 0d);
+
 			if (printEstimatesVsRuntimes) {
 				Runtime runtime = new Runtime(timestamp, estimate);
 				estimates.add(runtime);
 			}
-			return logarithmize ? Math.pow(Math.E, estimate) : Math.max(estimate, 0d);
+			return estimate;
 		}
 	}
 
@@ -146,14 +136,12 @@ public class ERA extends AbstractWorkflowScheduler {
 		runningTasksPerBot = new HashMap<>();
 		runningTasksPerBotPerVm = new HashMap<>();
 		runtimePerBotPerVm = new HashMap<>();
-		numGen = Parameters.numGen;
 		// stageintimePerMBPerVm = new HashMap<>();
 		this.runId = runId;
 		Locale loc = new Locale("en");
 		df = (DecimalFormat) NumberFormat.getNumberInstance(loc);
 		df.applyPattern("###.####");
 		df.setMaximumIntegerDigits(7);
-		keepReplicatesRunning = true;
 	}
 
 	// this function is called once at the beginning of workflow execution
@@ -178,7 +166,7 @@ public class ERA extends AbstractWorkflowScheduler {
 				runtimePerBotPerVm.get(vm).put(bot, new WienerProcessModel(bot, vm.getId()));
 			}
 		}
-		
+
 		todo = new HashSet<>(tasks);
 	}
 
@@ -213,6 +201,10 @@ public class ERA extends AbstractWorkflowScheduler {
 		double s_min = Double.MAX_VALUE;
 		for (Entry<String, Queue<Task>> b_i : b_select.entrySet()) {
 			double e_j = runtimePerBotPerVm.get(vm).get(b_i.getKey()).getEstimate(CloudSim.clock());
+			if (e_j == 0) {
+				b_min = b_i.getValue();
+				break;
+			}
 			double e_min = e_j;
 			double e_max = e_j;
 
@@ -228,7 +220,7 @@ public class ERA extends AbstractWorkflowScheduler {
 				}
 			}
 
-			double s = (e_max == 0) ? 0d : (e_j - e_min) / e_max;
+			double s = (e_max <= e_min) ? 0d : (e_j - e_min) / (e_max - e_min);
 			if (s < s_min) {
 				s_min = s;
 				b_min = b_i.getValue();
@@ -292,15 +284,21 @@ public class ERA extends AbstractWorkflowScheduler {
 	}
 
 	private void taskFinished(Task task, Vm vm) {
-		if (runningTasksPerBot.containsKey(task.getName())) {
+		runningTasksPerBotPerVm.get(vm).get(task.getName()).remove(task);
+		if (runningTasksPerBotPerVm.get(vm).get(task.getName()).isEmpty())
+			runningTasksPerBotPerVm.get(vm).remove(task.getName());
+
+		boolean stillRunning = false;
+		for (Map<String, Set<Task>> bot : runningTasksPerBotPerVm.values()) {
+			if (bot.containsKey(task.getName()) && bot.get(task.getName()).contains(task))
+				stillRunning = true;
+		}
+
+		if (!stillRunning) {
 			runningTasksPerBot.get(task.getName()).remove(task);
 			if (runningTasksPerBot.get(task.getName()).isEmpty())
 				runningTasksPerBot.remove(task.getName());
 		}
-
-		runningTasksPerBotPerVm.get(vm).get(task.getName()).remove(task);
-		if (runningTasksPerBotPerVm.get(vm).get(task.getName()).isEmpty())
-			runningTasksPerBotPerVm.get(vm).remove(task.getName());
 	}
 
 	@Override

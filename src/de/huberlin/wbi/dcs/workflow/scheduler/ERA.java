@@ -24,10 +24,10 @@ import de.huberlin.wbi.dcs.workflow.Task;
 
 public class ERA extends AbstractWorkflowScheduler {
 
-	protected final double alpha = 0.05;
-	protected final double rho = 0.1;
+	protected final double alpha = 0.001;
+	protected final boolean rho = true;
 
-	public static boolean printEstimatesVsRuntimes = true;
+	public static boolean printEstimatesVsRuntimes = false;
 	public static boolean logarithmize = false;
 
 	protected DecimalFormat df;
@@ -178,13 +178,12 @@ public class ERA extends AbstractWorkflowScheduler {
 		Map<String, Set<Task>> b_run = runningTasksPerBot;
 		Map<String, Set<Task>> b_j = runningTasksPerBotPerVm.get(vm);
 
-		if (b_ready.isEmpty() && b_run.equals(b_j)) {
-			return null;
-		}
-
 		Map<String, Queue<Task>> b_select = b_ready;
-		double r = numGen.nextDouble();
-		if (b_ready.isEmpty() || r < rho) {
+		if (b_ready.isEmpty()) {
+			if (b_run.equals(b_j) || !rho) {
+				return null;
+			}
+
 			b_select = new HashMap<>();
 			for (Entry<String, Set<Task>> e : b_run.entrySet()) {
 				Queue<Task> tasks = new LinkedList<>(e.getValue());
@@ -205,22 +204,22 @@ public class ERA extends AbstractWorkflowScheduler {
 				b_min = b_i.getValue();
 				break;
 			}
-			double e_min = e_j;
-			double e_max = e_j;
 
+			double e_min = Double.MAX_VALUE;
+			double e_sum = e_j;
+			int e_num = 1;
 			for (Vm k : m) {
-				if (k.equals(vm))
-					continue;
 				double e_k = runtimePerBotPerVm.get(k).get(b_i.getKey()).getEstimate(CloudSim.clock());
+				if (k.equals(vm) || e_k == 0)
+					continue;
 				if (e_k < e_min) {
 					e_min = e_k;
 				}
-				if (e_k > e_max) {
-					e_max = e_k;
-				}
+				e_sum += e_k;
+				e_num++;
 			}
 
-			double s = (e_max <= e_min) ? 0d : (e_j - e_min) / (e_max - e_min);
+			double s = (e_j - e_min) / (e_sum / e_num);
 			if (s < s_min) {
 				s_min = s;
 				b_min = b_i.getValue();
@@ -275,29 +274,27 @@ public class ERA extends AbstractWorkflowScheduler {
 		runtimePerBotPerVm.get(vm).get(task.getName()).addRuntime(task.getFinishTime(), runtime);
 		todo.remove(task);
 
-		taskFinished(task, vm);
+		taskFinished(task);
 	}
 
 	@Override
 	public void taskFailed(Task task, Vm vm) {
-		taskFinished(task, vm);
+		taskFinished(task);
 	}
 
-	private void taskFinished(Task task, Vm vm) {
-		runningTasksPerBotPerVm.get(vm).get(task.getName()).remove(task);
-		if (runningTasksPerBotPerVm.get(vm).get(task.getName()).isEmpty())
-			runningTasksPerBotPerVm.get(vm).remove(task.getName());
-
-		boolean stillRunning = false;
-		for (Map<String, Set<Task>> bot : runningTasksPerBotPerVm.values()) {
-			if (bot.containsKey(task.getName()) && bot.get(task.getName()).contains(task))
-				stillRunning = true;
-		}
-
-		if (!stillRunning) {
+	private void taskFinished(Task task) {
+		if (runningTasksPerBot.containsKey(task.getName()) && runningTasksPerBot.get(task.getName()).contains(task)) {
 			runningTasksPerBot.get(task.getName()).remove(task);
 			if (runningTasksPerBot.get(task.getName()).isEmpty())
 				runningTasksPerBot.remove(task.getName());
+		}
+
+		for (Map<String, Set<Task>> bot : runningTasksPerBotPerVm.values()) {
+			if (bot.containsKey(task.getName()) && bot.get(task.getName()).contains(task)) {
+				bot.get(task.getName()).remove(task);
+				if (bot.get(task.getName()).isEmpty())
+					bot.remove(task.getName());
+			}
 		}
 	}
 

@@ -29,7 +29,8 @@ public class CuneiformLogFileReader extends LogFileReader {
 						break;
 					case JsonReportEntry.KEY_FILE_SIZE_STAGEIN:
 						String fileName = e.getFile();
-						long fileSize = Long.parseLong(e.getValueRawString()) / 1024;
+						long fileSize = Long.parseLong(e.getValueRawString());
+						fileSize = (fileSize > 0 && fileSize < 1024) ? 1 : fileSize / 1024;
 						if (fileSize > 0) {
 							createOrGetFile(fileName, (int) fileSize);
 							task.incIo(fileSize);
@@ -38,9 +39,10 @@ public class CuneiformLogFileReader extends LogFileReader {
 						break;
 					case JsonReportEntry.KEY_FILE_SIZE_STAGEOUT:
 						fileName = e.getFile();
-						fileSize = Long.parseLong(e.getValueRawString()) / 1024;
+						fileSize = Long.parseLong(e.getValueRawString());
+						fileSize = (fileSize > 0 && fileSize < 1024) ? 1 : fileSize / 1024;
 						if (fileSize > 0) {
-							createOrGetFile(e.getFile(), (int) fileSize);
+							createOrGetFile(fileName, (int) fileSize);
 							task.incIo(fileSize);
 							fileNameToProducingTaskId.put(fileName, e.getInvocId());
 						}

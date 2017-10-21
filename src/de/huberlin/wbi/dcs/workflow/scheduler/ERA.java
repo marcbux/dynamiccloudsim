@@ -24,8 +24,8 @@ import de.huberlin.wbi.dcs.workflow.Task;
 
 public class ERA extends AbstractWorkflowScheduler {
 
-	protected final double alpha = 0.001;
-	protected final boolean rho = true;
+	public static double alpha = 0.2;
+	public static boolean rho = false;
 
 	public static boolean printEstimatesVsRuntimes = false;
 	public static boolean logarithmize = false;

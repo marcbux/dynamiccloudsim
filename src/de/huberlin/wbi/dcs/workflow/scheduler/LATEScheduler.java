@@ -193,7 +193,7 @@ public class LATEScheduler extends AbstractReplicationScheduler {
 		List<Task> candidates = new LinkedList<>();
 		for (Task candidate : allTasks) {
 			if (!speculativeTasks.contains(candidate) && progressRates.get(candidate) < currentSlowTaskThreshold) {
-				System.out.println(progressRates.get(candidate) + " " + currentSlowTaskThreshold);
+//				System.out.println(progressRates.get(candidate) + " " + currentSlowTaskThreshold);
 				candidates.add(candidate);
 			}
 		}

@@ -13,18 +13,25 @@ import org.cloudbus.cloudsim.distributions.WeibullDistr;
 import org.cloudbus.cloudsim.distributions.ZipfDistr;
 
 import de.huberlin.wbi.dcs.distributions.NormalDistribution;
+import de.huberlin.wbi.dcs.workflow.scheduler.ERA;
 
 public class Parameters {
 
-	public static long seed = 3;
-	public static Scheduler scheduler = Scheduler.ERA;
+	public static long seed = 42;
+	public static boolean outputDatacenterEvents = false;
 	public static int numberOfRuns = 1;
 
 	public enum Scheduler {
 		STATIC_ROUND_ROBIN, HEFT, JOB_QUEUE, LATE, C3, ERA
 	}
-	
-	public static boolean considerDataLocality = false;
+
+	public static Scheduler scheduler = Scheduler.ERA;
+
+	public enum Experiment {
+		MONTAGE_TRACE_1, MONTAGE_TRACE_12, MONTAGE_25, MONTAGE_1000, EPIGENOMICS_997, CYBERSHAKE_1000, ALIGNMENT_TRACE, CUNEIFORM_VARIANT_CALL, HETEROGENEOUS_TEST_WORKFLOW
+	}
+
+	public static Experiment experiment = Experiment.HETEROGENEOUS_TEST_WORKFLOW;
 
 	// datacenter params
 	// Kb / s
@@ -48,23 +55,16 @@ public class Parameters {
 	public static int mipsPerCoreXeonE5430 = 355;
 
 	// vm params
-	public static int nVms = 2;
+	public static int nVms = 8;
 	public static int taskSlotsPerVm = 1;
 
-	public static double numberOfCusPerPe = 1;
+	public static int numberOfCusPerPe = 1;
 	public static int numberOfPes = 1;
 	public static int ram = (int) (1.7 * 1024);
 
-	public enum Experiment {
-		MONTAGE_TRACE_1, MONTAGE_TRACE_12, MONTAGE_25, MONTAGE_1000, EPIGENOMICS_997, CYBERSHAKE_1000, ALIGNMENT_TRACE, CUNEIFORM_VARIANT_CALL, HETEROGENEOUS_TEST_WORKFLOW
-	}
-
-	public static Experiment experiment = Experiment.HETEROGENEOUS_TEST_WORKFLOW;
-
-	public static boolean outputDatacenterEvents = true;
 	public static boolean outputWorkflowGraph = false;
 	public static boolean outputVmPerformanceLogs = false;
-
+	public static boolean considerDataLocality = false;
 
 	// experiment parameters
 	public enum Distribution {
@@ -196,7 +196,7 @@ public class Parameters {
 	// e.g., Task progress scores, HEFT runtime estimates
 	public static double distortionCV = 0d;
 
-	public static Random numGen = new Random(seed);
+	public static Random numGen;
 
 	public static ContinuousDistribution getDistribution(Distribution distribution, double mean, int alpha, double beta, double dev, double shape,
 	    double location, double shift, double min, double max, int population) {
@@ -235,55 +235,79 @@ public class Parameters {
 	}
 
 	public static void parseParameters(String[] args) {
-
 		for (int i = 0; i < args.length; i++) {
+			if (args[i].compareTo("-" + "seed") == 0) {
+				seed = Long.valueOf(args[++i]);
+			}
+			if (args[i].compareTo("-" + "workflow") == 0) {
+				experiment = Experiment.valueOf(args[++i]);
+			}
 			if (args[i].compareTo("-" + "outputVmPerformanceLogs") == 0) {
 				outputVmPerformanceLogs = Boolean.valueOf(args[++i]);
 			}
 			if (args[i].compareTo("-" + "scheduler") == 0) {
 				scheduler = Scheduler.valueOf(args[++i]);
 			}
+			if (args[i].compareTo("-" + "alpha") == 0) {
+				ERA.alpha = Double.valueOf(args[++i]);
+			}
+			if (args[i].compareTo("-" + "rho") == 0) {
+				ERA.rho = Boolean.valueOf(args[++i]);
+			}
 			if (args[i].compareTo("-" + "numberOfRuns") == 0) {
 				numberOfRuns = Integer.valueOf(args[++i]);
 			}
 			if (args[i].compareTo("-" + "heterogeneityCV") == 0) {
-				cpuHeterogeneityCV = ioHeterogeneityCV = bwHeterogeneityCV = Double.valueOf(args[++i]);
+				double arg = Double.valueOf(args[++i]);
+				cpuHeterogeneityCV = ioHeterogeneityCV = bwHeterogeneityCV = arg > 0 ? arg : Double.MIN_NORMAL;
 			}
 			if (args[i].compareTo("-" + "cpuHeterogeneityCV") == 0) {
-				cpuHeterogeneityCV = Double.valueOf(args[++i]);
+				double arg = Double.valueOf(args[++i]);
+				cpuHeterogeneityCV = arg > 0 ? arg : Double.MIN_NORMAL;
 			}
 			if (args[i].compareTo("-" + "ioHeterogeneityCV") == 0) {
-				ioHeterogeneityCV = Double.valueOf(args[++i]);
+				double arg = Double.valueOf(args[++i]);
+				ioHeterogeneityCV = arg > 0 ? arg : Double.MIN_NORMAL;
 			}
 			if (args[i].compareTo("-" + "bwHeterogeneityCV") == 0) {
-				bwHeterogeneityCV = Double.valueOf(args[++i]);
+				double arg = Double.valueOf(args[++i]);
+				bwHeterogeneityCV = arg > 0 ? arg : Double.MIN_NORMAL;
 			}
 			if (args[i].compareTo("-" + "baselineChangesPerHour") == 0) {
-				cpuBaselineChangesPerHour = ioBaselineChangesPerHour = bwBaselineChangesPerHour = Double.valueOf(args[++i]);
+				double arg = Double.valueOf(args[++i]);
+				cpuBaselineChangesPerHour = ioBaselineChangesPerHour = bwBaselineChangesPerHour = arg > 0 ? arg : 0;
 			}
 			if (args[i].compareTo("-" + "baselineCV") == 0) {
-				cpuDynamicsCV = ioDynamicsCV = bwDynamicsCV = Double.valueOf(args[++i]);
+				double arg = Double.valueOf(args[++i]);
+				cpuDynamicsCV = ioDynamicsCV = bwDynamicsCV = arg > 0 ? arg : Double.MIN_NORMAL;
 			}
 			if (args[i].compareTo("-" + "cpuDynamicsCV") == 0) {
-				cpuDynamicsCV = Double.valueOf(args[++i]);
+				double arg = Double.valueOf(args[++i]);
+				cpuDynamicsCV = arg > 0 ? arg : Double.MIN_NORMAL;
 			}
 			if (args[i].compareTo("-" + "ioDynamicsCV") == 0) {
-				ioDynamicsCV = Double.valueOf(args[++i]);
+				double arg = Double.valueOf(args[++i]);
+				ioDynamicsCV = arg > 0 ? arg : Double.MIN_NORMAL;
 			}
 			if (args[i].compareTo("-" + "bwDynamicsCV") == 0) {
-				bwDynamicsCV = Double.valueOf(args[++i]);
+				double arg = Double.valueOf(args[++i]);
+				bwDynamicsCV = arg > 0 ? arg : Double.MIN_NORMAL;
 			}
 			if (args[i].compareTo("-" + "noiseCV") == 0) {
-				cpuNoiseCV = ioNoiseCV = bwNoiseCV = Double.valueOf(args[++i]);
+				double arg = Double.valueOf(args[++i]);
+				cpuNoiseCV = ioNoiseCV = bwNoiseCV = arg > 0 ? arg : Double.MIN_NORMAL;
 			}
 			if (args[i].compareTo("-" + "cpuNoiseCV") == 0) {
-				cpuNoiseCV = Double.valueOf(args[++i]);
+				double arg = Double.valueOf(args[++i]);
+				cpuNoiseCV = arg > 0 ? arg : Double.MIN_NORMAL;
 			}
 			if (args[i].compareTo("-" + "ioNoiseCV") == 0) {
-				ioNoiseCV = Double.valueOf(args[++i]);
+				double arg = Double.valueOf(args[++i]);
+				ioNoiseCV = arg > 0 ? arg : Double.MIN_NORMAL;
 			}
 			if (args[i].compareTo("-" + "bwNoiseCV") == 0) {
-				bwNoiseCV = Double.valueOf(args[++i]);
+				double arg = Double.valueOf(args[++i]);
+				bwNoiseCV = arg > 0 ? arg : Double.MIN_NORMAL;
 			}
 			if (args[i].compareTo("-" + "likelihoodOfStraggler") == 0) {
 				likelihoodOfStraggler = Double.valueOf(args[++i]);
@@ -297,8 +321,17 @@ public class Parameters {
 			if (args[i].compareTo("-" + "runtimeFactorInCaseOfFailure") == 0) {
 				runtimeFactorInCaseOfFailure = Double.valueOf(args[++i]);
 			}
+			if (args[i].compareTo("-" + "numberOfCusPerPe") == 0) {
+				numberOfCusPerPe = Integer.valueOf(args[++i]);
+			}
+			if (args[i].compareTo("-" + "numberOfPes") == 0) {
+				numberOfPes = Integer.valueOf(args[++i]);
+			}
+			if (args[i].compareTo("-" + "ramGb") == 0) {
+				ram = (int) (Double.valueOf(args[++i]) * 1024);
+			}
 		}
-
+		numGen = new Random(seed);
 	}
 
 }

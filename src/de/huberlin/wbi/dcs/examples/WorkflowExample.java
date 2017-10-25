@@ -71,6 +71,7 @@ public class WorkflowExample {
 			Log.printLine("minimum minutes (quotient): " + HeterogeneousCloudlet.getTotalMi() / DynamicHost.getTotalMi() / 60 + " "
 			    + HeterogeneousCloudlet.getTotalIo() / DynamicHost.getTotalIo() / 60 + " " + HeterogeneousCloudlet.getTotalBw() / DynamicHost.getTotalBw() / 60);
 		} catch (Exception e) {
+//			Log.printLine(e.getStackTrace().toString());
 			e.printStackTrace();
 			Log.printLine("The simulation has been terminated due to an unexpected error");
 		}

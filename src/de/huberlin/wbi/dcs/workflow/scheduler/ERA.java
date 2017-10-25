@@ -10,6 +10,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -22,10 +23,10 @@ import org.cloudbus.cloudsim.core.CloudSim;
 
 import de.huberlin.wbi.dcs.workflow.Task;
 
-public class ERA extends AbstractWorkflowScheduler {
+public class ERA extends AbstractReplicationScheduler {
 
 	public static double alpha = 0.2;
-	public static boolean rho = false;
+	public static int rho = 1;
 
 	public static boolean printEstimatesVsRuntimes = false;
 	public static boolean logarithmize = false;
@@ -35,9 +36,9 @@ public class ERA extends AbstractWorkflowScheduler {
 
 	protected Map<String, Queue<Task>> readyTasksPerBot;
 	protected Map<String, Set<Task>> runningTasksPerBot;
-	protected Map<Vm, Map<String, Set<Task>>> runningTasksPerBotPerVm;
 	protected Map<Vm, Map<String, WienerProcessModel>> runtimePerBotPerVm;
 
+	protected List<Task> replicas;
 	protected Set<Task> todo;
 
 	public class Runtime {
@@ -98,7 +99,11 @@ public class ERA extends AbstractWorkflowScheduler {
 			measurements.add(measurement);
 		}
 
-		public double getEstimate(double timestamp) {
+		public double getEstimate(double timestamp, double quantile) {
+			if (quantile == 0.5 && measurements.size() > 0) {
+				return logarithmize ? Math.pow(Math.E, measurements.getLast().runtime) : Math.max(measurements.getLast().runtime, Double.MIN_NORMAL);
+			}
+
 			if (differences.size() < 2) {
 				return 0d;
 			}
@@ -117,10 +122,10 @@ public class ERA extends AbstractWorkflowScheduler {
 			double estimate = lastMeasurement.runtime;
 			if (variance > 0d) {
 				NormalDistribution nd = new NormalDistribution(lastMeasurement.runtime, Math.sqrt(variance));
-				estimate = nd.inverseCumulativeProbability(alpha);
+				estimate = nd.inverseCumulativeProbability(quantile);
 			}
 
-			estimate = logarithmize ? Math.pow(Math.E, estimate) : Math.max(estimate, 0d);
+			estimate = logarithmize ? Math.pow(Math.E, estimate) : Math.max(estimate, Double.MIN_NORMAL);
 
 			if (printEstimatesVsRuntimes) {
 				Runtime runtime = new Runtime(timestamp, estimate);
@@ -134,9 +139,8 @@ public class ERA extends AbstractWorkflowScheduler {
 		super(name, taskSlotsPerVm);
 		readyTasksPerBot = new HashMap<>();
 		runningTasksPerBot = new HashMap<>();
-		runningTasksPerBotPerVm = new HashMap<>();
 		runtimePerBotPerVm = new HashMap<>();
-		// stageintimePerMBPerVm = new HashMap<>();
+		replicas = new LinkedList<>();
 		this.runId = runId;
 		Locale loc = new Locale("en");
 		df = (DecimalFormat) NumberFormat.getNumberInstance(loc);
@@ -151,9 +155,6 @@ public class ERA extends AbstractWorkflowScheduler {
 			if (!runtimePerBotPerVm.containsKey(vm)) {
 				Map<String, WienerProcessModel> runtimePerBot = new HashMap<>();
 				runtimePerBotPerVm.put(vm, runtimePerBot);
-
-				Map<String, Set<Task>> runningTasksPerBot_ = new HashMap<>();
-				runningTasksPerBotPerVm.put(vm, runningTasksPerBot_);
 			}
 		}
 
@@ -176,40 +177,35 @@ public class ERA extends AbstractWorkflowScheduler {
 
 		Map<String, Queue<Task>> b_ready = readyTasksPerBot;
 		Map<String, Set<Task>> b_run = runningTasksPerBot;
-		Map<String, Set<Task>> b_j = runningTasksPerBotPerVm.get(vm);
 
 		Map<String, Queue<Task>> b_select = b_ready;
 		if (b_ready.isEmpty()) {
-			if (b_run.equals(b_j) || !rho) {
-				return null;
-			}
-
 			b_select = new HashMap<>();
 			for (Entry<String, Set<Task>> e : b_run.entrySet()) {
 				Queue<Task> tasks = new LinkedList<>(e.getValue());
-				if (b_j.containsKey(e.getKey()))
-					tasks.removeAll(b_j.get(e.getKey()));
-				if (!tasks.isEmpty())
-					b_select.put(e.getKey(), tasks);
+				b_select.put(e.getKey(), tasks);
 			}
 			replicate = true;
 		}
 
-		Set<Vm> m = runningTasksPerBotPerVm.keySet();
+		Set<Vm> m = runtimePerBotPerVm.keySet();
 		Queue<Task> b_min = null;
 		double s_min = Double.MAX_VALUE;
 		for (Entry<String, Queue<Task>> b_i : b_select.entrySet()) {
-			double e_j = runtimePerBotPerVm.get(vm).get(b_i.getKey()).getEstimate(CloudSim.clock());
+			double e_j = runtimePerBotPerVm.get(vm).get(b_i.getKey()).getEstimate(CloudSim.clock(), replicate ? 0.5 : alpha);
 			if (e_j == 0) {
-				b_min = b_i.getValue();
-				break;
+				if (!replicate) {
+					b_min = b_i.getValue();
+					break;
+				}
+				e_j = Double.MAX_VALUE;
 			}
 
 			double e_min = Double.MAX_VALUE;
 			double e_sum = e_j;
 			int e_num = 1;
 			for (Vm k : m) {
-				double e_k = runtimePerBotPerVm.get(k).get(b_i.getKey()).getEstimate(CloudSim.clock());
+				double e_k = runtimePerBotPerVm.get(k).get(b_i.getKey()).getEstimate(CloudSim.clock(), replicate ? 0.5 : alpha);
 				if (k.equals(vm) || e_k == 0)
 					continue;
 				if (e_k < e_min) {
@@ -232,21 +228,19 @@ public class ERA extends AbstractWorkflowScheduler {
 			if (replicate) {
 				task = new Task(task);
 				task.setSpeculativeCopy(true);
-			} else if (readyTasksPerBot.get(task.getName()).isEmpty()) {
-				readyTasksPerBot.remove(task.getName());
-			}
+				replicas.add(task);
+			} else {
+				if (!runningTasksPerBot.containsKey(task.getName())) {
+					Set<Task> s = new HashSet<>();
+					runningTasksPerBot.put(task.getName(), s);
+				}
+				runningTasksPerBot.get(task.getName()).add(task);
 
-			if (!runningTasksPerBot.containsKey(task.getName())) {
-				Set<Task> s = new HashSet<>();
-				runningTasksPerBot.put(task.getName(), s);
-			}
-			runningTasksPerBot.get(task.getName()).add(task);
+				if (readyTasksPerBot.get(task.getName()).isEmpty()) {
+					readyTasksPerBot.remove(task.getName());
+				}
 
-			if (!runningTasksPerBotPerVm.get(vm).containsKey(task.getName())) {
-				Set<Task> s = new HashSet<>();
-				runningTasksPerBotPerVm.get(vm).put(task.getName(), s);
 			}
-			runningTasksPerBotPerVm.get(vm).get(task.getName()).add(task);
 
 			return task;
 		}
@@ -265,7 +259,12 @@ public class ERA extends AbstractWorkflowScheduler {
 
 	@Override
 	public boolean tasksRemaining() {
-		return !todo.isEmpty();
+		return (!signalFinished() && (!readyTasksPerBot.isEmpty() || replicas.size() < rho));
+	}
+
+	@Override
+	public boolean signalFinished() {
+		return todo.isEmpty();
 	}
 
 	@Override
@@ -283,18 +282,14 @@ public class ERA extends AbstractWorkflowScheduler {
 	}
 
 	private void taskFinished(Task task) {
-		if (runningTasksPerBot.containsKey(task.getName()) && runningTasksPerBot.get(task.getName()).contains(task)) {
+		// if (task.isSpeculativeCopy()) {
+		while (replicas.contains(task))
+			replicas.remove(task);
+		// } else {
+		if (runningTasksPerBot.containsKey(task.getName())) {
 			runningTasksPerBot.get(task.getName()).remove(task);
 			if (runningTasksPerBot.get(task.getName()).isEmpty())
 				runningTasksPerBot.remove(task.getName());
-		}
-
-		for (Map<String, Set<Task>> bot : runningTasksPerBotPerVm.values()) {
-			if (bot.containsKey(task.getName()) && bot.get(task.getName()).contains(task)) {
-				bot.get(task.getName()).remove(task);
-				if (bot.get(task.getName()).isEmpty())
-					bot.remove(task.getName());
-			}
 		}
 	}
 

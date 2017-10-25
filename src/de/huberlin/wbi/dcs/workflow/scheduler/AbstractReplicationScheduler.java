@@ -151,7 +151,7 @@ public abstract class AbstractReplicationScheduler extends AbstractWorkflowSched
 
 		if (tasksRemaining()) {
 			submitTasks();
-		} else if (idleTaskSlots.size() == getVmsCreatedList().size() * getTaskSlotsPerVm()) {
+		} else if (signalFinished() || (idleTaskSlots.size() == getVmsCreatedList().size() * getTaskSlotsPerVm())) {
 			Log.printLine(CloudSim.clock() + ": " + getName() + ": All Tasks executed. Finishing...");
 			terminate();
 			clearDatacenters();

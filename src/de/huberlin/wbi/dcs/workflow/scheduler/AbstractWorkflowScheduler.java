@@ -176,8 +176,10 @@ public abstract class AbstractWorkflowScheduler extends DatacenterBroker impleme
 			    + task.getName() + " " + task.getParams() + " \"");
 			runningTasks.remove(task.getCloudletId());
 
-			resetTask(task);
-			taskReady(task);
+			if (!task.isSpeculativeCopy()) {
+				resetTask(task);
+				taskReady(task);
+			}
 
 			idleTaskSlots.add(vm);
 			taskFailed(task, vm);
@@ -185,12 +187,17 @@ public abstract class AbstractWorkflowScheduler extends DatacenterBroker impleme
 
 		if (tasksRemaining()) {
 			submitTasks();
-		} else if (idleTaskSlots.size() == getVmsCreatedList().size() * getTaskSlotsPerVm()) {
+		} else if (signalFinished() || (idleTaskSlots.size() == getVmsCreatedList().size() * getTaskSlotsPerVm())) {
 			Log.printLine(CloudSim.clock() + ": " + getName() + ": All Tasks executed. Finishing...");
 			terminate();
 			clearDatacenters();
 			finishExecution();
 		}
+	}
+
+	@Override
+	public boolean signalFinished() {
+		return false;
 	}
 
 }

@@ -19,6 +19,8 @@ public interface WorkflowScheduler {
 	public void taskFailed(Task task, Vm vm);
 
 	public boolean tasksRemaining();
+	
+	public boolean signalFinished();
 
 	public void terminate();
 

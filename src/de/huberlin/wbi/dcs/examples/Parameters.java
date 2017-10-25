@@ -19,7 +19,7 @@ public class Parameters {
 
 	public static long seed = 42;
 	public static boolean outputDatacenterEvents = false;
-	public static int numberOfRuns = 1;
+	public static int numberOfRuns = 100;
 
 	public enum Scheduler {
 		STATIC_ROUND_ROBIN, HEFT, JOB_QUEUE, LATE, C3, ERA
@@ -252,7 +252,7 @@ public class Parameters {
 				ERA.alpha = Double.valueOf(args[++i]);
 			}
 			if (args[i].compareTo("-" + "rho") == 0) {
-				ERA.rho = Boolean.valueOf(args[++i]);
+				ERA.rho = Integer.valueOf(args[++i]);
 			}
 			if (args[i].compareTo("-" + "numberOfRuns") == 0) {
 				numberOfRuns = Integer.valueOf(args[++i]);
@@ -329,6 +329,13 @@ public class Parameters {
 			}
 			if (args[i].compareTo("-" + "ramGb") == 0) {
 				ram = (int) (Double.valueOf(args[++i]) * 1024);
+			}
+
+			if (args[i].compareTo("-" + "noHet") == 0) {
+				int mips = (mipsPerCoreOpteron270 + mipsPerCoreOpteron2218 + mipsPerCoreXeonE5430) / 3;
+				mipsPerCoreOpteron270 = mips;
+				mipsPerCoreOpteron2218 = mips;
+				mipsPerCoreXeonE5430 = mips;
 			}
 		}
 		numGen = new Random(seed);
